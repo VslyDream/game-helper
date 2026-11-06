@@ -1,0 +1,3 @@
+# Сохранения — контракт адаптера
+
+Сохранения: `snapshots:{items:[],playthroughs:[]}`; элемент `{id,name,createdAt,playthrough,scene,imageUrl,deleted}`. Команды `snapshots.capture {playthrough}`, `load {id}`, `rename {id,name}`, `trash {id}`, `restore {id}`, `newPlaythrough {name}`, `import {fileName,data}`, `export {id}` с префиксом `snapshots.`. Успешный экспорт дополнительно возвращает `download:{url,fileName}` с доверенным локальным URL. Импорт UI передаёт содержимое как data URL/base64; формат и лимит проверяются сервером. Стартовый лимит UI — 64 MiB, настраивается через `snapshots.maxImportBytes`; для больших архивов заменить на потоковую загрузку файла. Создание и новый скриншот — единая операция адаптера. Галерея не выдаёт шаблонную картинку за кадр игры.

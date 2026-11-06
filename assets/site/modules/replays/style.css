@@ -1,0 +1,8 @@
+
+@media (max-width:760px){.replay-speed-label{margin-left:0}}
+@media (max-width:760px){.timeline-row{flex-wrap:wrap}}
+@media (max-width:760px){.timeline-row input{order:3;width:100%}}
+@media (max-width:760px){.timeline-row output{margin-left:auto}}
+@media (max-width:760px){.replay-gallery{grid-template-columns:1fr}}
+@media (max-width:480px){.replay-track{gap:8px}}
+@media (max-width:480px){.replay-track>button{margin-left:0}}

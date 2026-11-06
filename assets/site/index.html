@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Игровой хелпер</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <a class="app-brand" href="?page=cheats"><span class="brand-symbol">🎮</span><span id="app-name">Игровой хелпер<small id="game-name"></small></span></a>
+      <nav id="pages" class="app-pages" aria-label="Страницы"></nav>
+      <nav id="categories" class="category-nav" aria-label="Категории читов"></nav>
+      <div id="footer" class="app-sidebar-bottom"></div>
+    </aside>
+    <main class="app-main">
+      <header class="app-header"><span class="connection"><i id="connection-dot"></i><span id="connection-text">Подключение…</span></span><div id="game-controls" class="inline"></div></header>
+      <div id="operation" class="operation" role="status" hidden></div>
+      <div id="content"></div>
+    </main>
+  </div>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "id": "my-game",
+  "name": "Игровой хелпер",
+  "game": "Название игры",
+  "modules": [],
+  "freecam": {"optics": true, "sensorWidthMm": 36},
+  "distribution": {"archive": false, "installer": false, "findGame": false, "github": false},
+  "demo": false,
+  "apiBase": "/api",
+  "cheats": []
+}
