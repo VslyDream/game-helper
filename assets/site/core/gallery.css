@@ -4,3 +4,4 @@
 @media (max-width:760px){.gallery-toolbar{align-items:flex-start;flex-direction:column}}
 @media (max-width:760px){.gallery-toolbar>.inline{flex-wrap:wrap}}
 @media (max-width:480px){.gallery{grid-template-columns:1fr}}
+.chip-filter{display:flex;flex-wrap:wrap;gap:6px;margin:-6px 0 16px}.chips{display:flex;flex-wrap:wrap;gap:5px;margin:-6px 0 10px}.chip{font-size:11px;line-height:1.4;padding:2px 8px;min-height:0;border-radius:10px;background:#22384a;color:#b9ceda;border:1px solid transparent}button.chip.active{border-color:var(--accent);color:var(--accent)}.snapshot-check{font-size:11px;color:#e7b673;margin:-4px 0 10px}

@@ -24,11 +24,14 @@ export async function createDemoBridge(config) {
   context.on('game.close', () => {state.gameRunning = false; state.connection = 'closed'});
   state.availability['game.launch'].enabled = !state.gameRunning;
   state.availability['game.close'].enabled = state.gameRunning;
-  const active = ['cheats'];
+  const active = ['cheats', 'settings'];
   if (config.modules.includes('freecam')) active.push('freecam');
   if (config.modules.includes('snapshots')) active.push('snapshots');
+  if (config.modules.includes('catalog')) active.push('catalog');
+  if (config.modules.includes('staging')) active.push('staging');
   if (config.modules.some(m => m.startsWith('replay-'))) active.push('replays');
-  for (const module of active) (await import('../modules/' + module + '/demo.js')).register(context, config);
+  const demos = await Promise.all(active.map(module => import('../modules/' + module + '/demo.js')));
+  for (const demo of demos) demo.register(context, config);
   const bridge = {
     get state() {return state}, get busy() {return pending},
     subscribe(fn) {listeners.add(fn); fn(state); return () => listeners.delete(fn)},

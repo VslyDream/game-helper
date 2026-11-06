@@ -3,10 +3,11 @@ import {h, heading, commandButton, inputDialog, imageDialog, safeImageUrl, notif
 export function mount(parent, context) {
   const {bridge, config} = context;
   const storageKey = 'game-helper:' + config.id + ':gallery-filter';
-  let selected = 'all', signature = '', trashDialog;
+  let selected = 'all', tag = '', signature = '', trashDialog;
   try {selected = localStorage.getItem(storageKey) || 'all'} catch {}
   const filter = h('select', {'aria-label':'Прохождение'});
   const gallery = h('div', {class:'gallery'});
+  const chips = h('div', {class:'chip-filter', hidden:true});
   const trashCount = h('span', {}, '0');
   const trash = h('button', {type:'button'}, 'Корзина ', trashCount);
   const newPlaythrough = commandButton('＋ Прохождение', 'snapshots.newPlaythrough', context, () => null, 'quiet');
@@ -26,9 +27,9 @@ export function mount(parent, context) {
     importFile.value = '';
   };
   parent.append(
-    heading('Сохранения', commandButton('＋ Снять и сохранить', 'snapshots.capture', context, () => ({playthrough:selected === 'all' ? 'Основное' : selected}), 'primary')),
+    heading('Сохранения', commandButton('↻ Дубль заново', 'snapshots.retake', context, () => ({})), commandButton('＋ Снять и сохранить', 'snapshots.capture', context, () => ({playthrough:selected === 'all' ? 'Основное' : selected}), 'primary')),
     h('div', {class:'gallery-toolbar'}, h('div', {class:'inline'}, filter, newPlaythrough), h('div', {class:'inline'}, importButton, trash)),
-    importFile, gallery
+    chips, importFile, gallery
   );
   filter.onchange = () => {selected = filter.value; try {localStorage.setItem(storageKey, selected)} catch {} render(true)};
   function action(label, suffix, args, after) {
@@ -61,7 +62,9 @@ export function mount(parent, context) {
     const date = new Date(item.createdAt);
     const info = [Number.isNaN(date.valueOf()) ? '' : date.toLocaleString('ru-RU'), item.scene, item.playthrough].filter(Boolean).join(' · ');
     const load = action('Загрузить', 'load', () => ({id:item.id})); load.classList.add('primary');
-    return h('article', {class:'snapshot'}, image, h('div', {class:'snapshot-body'}, h('h3', {}, item.name), h('p', {class:'hint'}, info), h('div', {class:'inline spread'}, load, menu)));
+    const tags = item.tags?.length ? h('div', {class:'chips'}, item.tags.map(t => h('span', {class:'chip'}, t))) : null;
+    const check = item.check && !item.check.ok ? h('p', {class:'snapshot-check'}, '⚠ ' + (item.check.message || 'Проверка не прошла')) : null;
+    return h('article', {class:'snapshot'}, image, h('div', {class:'snapshot-body'}, h('h3', {}, item.name), h('p', {class:'hint'}, info), tags, check, h('div', {class:'inline spread'}, load, menu)));
   }
   function renderTrash() {
     if (!trashDialog) return;
@@ -78,14 +81,22 @@ export function mount(parent, context) {
   };
   function render(force = false) {
     const data = bridge.state.snapshots || {items:[],playthroughs:[]};
-    const nextSignature = JSON.stringify([data,bridge.state.availability,bridge.busy,selected]);
+    const nextSignature = JSON.stringify([data,bridge.state.availability,bridge.busy,selected,tag]);
     if (!force && signature === nextSignature) return;
     signature = nextSignature;
     const names = [...new Set([...(data.playthroughs || []), ...(data.items || []).map(s => s.playthrough)].filter(Boolean))];
     filter.replaceChildren(h('option', {value:'all'}, 'Все прохождения'), ...names.map(name => h('option', {value:name}, name)));
     filter.value = selected;
     if (!filter.value) {selected = 'all'; filter.value = 'all'}
-    const items = (data.items || []).filter(s => !s.deleted && (selected === 'all' || s.playthrough === selected)).sort((a,b) => b.createdAt.localeCompare(a.createdAt));
+    const allTags = [...new Set((data.items || []).filter(s => !s.deleted).flatMap(s => s.tags || []))];
+    if (tag && !allTags.includes(tag)) tag = '';
+    chips.hidden = !allTags.length;
+    chips.replaceChildren(...allTags.map(name => {
+      const button = h('button', {type:'button', class:'chip' + (name === tag ? ' active' : ''), 'aria-pressed':String(name === tag)}, name);
+      button.onclick = () => {tag = tag === name ? '' : name; render(true)};
+      return button;
+    }));
+    const items = (data.items || []).filter(s => !s.deleted && (selected === 'all' || s.playthrough === selected) && (!tag || s.tags?.includes(tag))).sort((a,b) => b.createdAt.localeCompare(a.createdAt));
     gallery.replaceChildren(...items.map(card));
     if (!items.length) gallery.append(h('p', {class:'hint'}, 'Пока нет снимков.'));
     trashCount.textContent = (data.items || []).filter(s => s.deleted).length;

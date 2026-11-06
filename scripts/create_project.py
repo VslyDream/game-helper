@@ -6,7 +6,8 @@ import re
 import shutil
 
 KIT = Path(__file__).resolve().parents[1]
-ALLOWED = {'freecam', 'gamepad', 'snapshots', 'replay-camera', 'replay-players', 'distribution'}
+ALLOWED = {'freecam', 'gamepad', 'snapshots', 'replay-camera', 'replay-players', 'distribution',
+           'catalog', 'staging', 'mcp'}
 
 
 def create(profile, output):
@@ -25,8 +26,8 @@ def create(profile, output):
     profile['demo'] = bool(profile.get('demo', False))
     # Complete validation before the first write.
     source = KIT / 'assets' / 'site'
-    ui_modules = ['cheats']
-    ui_modules += [m for m in ('freecam', 'snapshots') if m in chosen]
+    ui_modules = ['cheats', 'settings']
+    ui_modules += [m for m in ('freecam', 'snapshots', 'catalog', 'staging') if m in chosen]
     if chosen & {'replay-camera', 'replay-players'}:
         ui_modules.append('replays')
     for module in ui_modules:
@@ -40,15 +41,17 @@ def create(profile, output):
     for module in ui_modules:
         shutil.copytree(source / 'modules' / module, output / 'modules' / module,
                         ignore=shutil.ignore_patterns('demo.js') if not profile['demo'] else None)
+    if 'catalog' in chosen:
+        (output / 'catalog').mkdir()  # catalog/<name>.json is written once per project (CAT-01)
     (output / 'config.json').write_text(json.dumps(profile, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     shutil.copy2(KIT / 'scripts' / 'serve.py', output / 'serve.py')
     requirements = output / 'requirements'
     requirements.mkdir()
-    for name in ('core.md', 'ui.md', 'layout.md'):
+    for name in ('core.md', 'ui.md', 'layout.md', 'process.md'):
         shutil.copy2(KIT / 'references' / name, requirements / name)
     shutil.copy2(KIT / 'contracts' / 'adapter.md', requirements / 'adapter.md')
     selected_specs = []
-    for module in ('freecam', 'snapshots', 'distribution'):
+    for module in ('freecam', 'snapshots', 'distribution', 'catalog', 'staging', 'mcp'):
         if module in chosen:
             target = module + '.md'
             shutil.copy2(KIT / 'modules' / module / 'SPEC.md', requirements / target)
@@ -69,7 +72,7 @@ def create(profile, output):
         selected_specs.append('world-state.md')
     (output / 'AGENTS.md').write_text(
         '# Хелпер выбранной игры\n\nПрофиль: `config.json`. Прочитайте `requirements/core.md`, `ui.md`, '
-        '`layout.md` и `adapter.md` в той же папке. Дополнительные требования: '
+        '`layout.md`, `process.md` и `adapter.md` в той же папке. Дополнительные требования: '
         + (', '.join('`requirements/' + name + '`' for name in selected_specs) or 'нет')
         + '.\n\nРеализуйте игровой адаптер и выбранные читы. Ресурсы UI и демоданные не доказывают работу в игре. '
         'Демо явно включается профилем; отключите его перед проверкой реального подключения.\n', encoding='utf-8')

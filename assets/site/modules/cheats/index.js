@@ -27,13 +27,15 @@ export function mount(parent, context) {
         input.onchange = () => send(input.checked);
         context.bridge.subscribe(state => {if (document.activeElement !== input) input.checked = !!read(state)});
         allowed(context.bridge, capability, input);
-        controls.append(h('label', {class:'switch-label'}, item.label, input));
+        controls.append(h('label', {class:'switch-label'}, h('span', {}, item.label, item.hint ? h('kbd', {}, item.hint) : null), input));
       } else if (item.type === 'select') {
         const select = h('select', {'aria-label':item.label}, (item.options || []).map(option => h('option', {value:option.value}, option.label)));
         select.onchange = () => send(select.value);
         context.bridge.subscribe(state => {if (document.activeElement !== select && read(state) !== undefined) select.value = read(state)});
         allowed(context.bridge, capability, select);
-        controls.append(h('label', {class:'control'}, h('span', {}, item.label), select));
+        controls.append(h('label', {class:'control'}, h('span', {}, item.label, item.hint ? h('kbd', {}, item.hint) : null), select));
+      } else if (item.type === 'pick') {
+        if (context.pick) controls.append(context.pick(item, context, capability));
       } else if (item.type === 'action') {
         const count = item.count ? h('input', {type:'number', ...item.count, 'aria-label':item.count.label || 'Количество'}) : null;
         const local = {...context, bridge:{subscribe:fn => context.bridge.subscribe(fn), available:() => context.bridge.available(capability),call:(...args) => context.bridge.call(...args)}};
