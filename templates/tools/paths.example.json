@@ -1,0 +1,28 @@
+{
+  "_comment": "Единственное место абсолютных путей проекта. Скопировать в paths.json рядом с проектом (не коммитить, если пути личные). Относительные пути — от папки этого файла. В строках работают подстановки {gameDir} {exe} {project} {root}.",
+
+  "gameDir": "D:\\Games\\MyGame (mod copy)",
+  "exe": "MyGame.exe",
+  "steamAppId": null,
+  "steamExe": null,
+  "launch": "exe",
+
+  "apiBase": "http://127.0.0.1:18801",
+  "serviceBase": "http://127.0.0.1:18800",
+
+  "project": "plugin\\GameHelper.csproj",
+  "buildCmd": ["dotnet", "build", "{project}", "-c", "Release", "-nologo", "-v", "q", "-p:GameDir={gameDir}", "-p:GameExe={exe}"],
+  "interopFixCmd": null,
+  "_interopFixCmd_example": ["dotnet", "run", "-c", "Release", "--project", "plugin\\InteropFix\\InteropFix.csproj", "--", "{gameDir}\\BepInEx\\interop"],
+
+  "logFile": "{gameDir}\\BepInEx\\LogOutput.log",
+  "shotsDir": "dev\\shots",
+
+  "readyState": "level",
+  "readyTimeout": 180,
+  "closeTimeout": 60,
+  "afterReady": null,
+  "_afterReady_example": {"command": "snapshots.load", "args": {"id": "last"}, "readyState": "level"},
+
+  "forbidden": ["save.delete", "saves.delete", "snapshots.purge", "progress.reset"]
+}
