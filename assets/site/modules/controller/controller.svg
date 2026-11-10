@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 435" class="controller-picture" role="img" aria-label="Контроллер: кнопки подсвечиваются, стики перемещаются при вводе">
+<defs><linearGradient id="body" x2="0" y2="1"><stop stop-color="#34475a"/><stop offset="1" stop-color="#1b2a3a"/></linearGradient><filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+<g data-button="lt"><rect class="button" x="168" y="17" width="75" height="54" rx="15"/><text x="205" y="43">LT</text></g>
+<g data-button="rt"><rect class="button" x="437" y="17" width="75" height="54" rx="15"/><text x="475" y="43">RT</text></g>
+<g data-button="lb"><rect class="button" x="129" y="73" width="136" height="33" rx="12"/><text class="button-name" x="197" y="90">LB</text></g>
+<g data-button="rb"><rect class="button" x="415" y="73" width="136" height="33" rx="12"/><text class="button-name" x="483" y="90">RB</text></g>
+<path class="pad-body" d="M176 102 C127 107 109 139 94 188 L56 348 C47 392 68 420 101 415 C130 410 163 359 193 320 Q340 347 487 320 C517 359 550 410 579 415 C612 420 633 392 624 348 L586 188 C571 139 553 107 504 102 Q340 87 176 102Z"/>
+<path class="grip" d="M122 244 Q147 273 193 320 M558 244 Q533 273 487 320"/>
+<text class="pad-mark" x="340" y="126">CONTROLLER LAB</text>
+<circle class="stick-well" cx="190" cy="188" r="55"/>
+<g data-button="ls"><g data-stick="left"><circle class="stick-cap" cx="190" cy="188" r="34"/><text class="button-name" x="190" y="188">L3</text></g></g>
+<circle class="stick-well" cx="431" cy="279" r="55"/>
+<g data-button="rs"><g data-stick="right"><circle class="stick-cap" cx="431" cy="279" r="34"/><text class="button-name" x="431" y="279">R3</text></g></g>
+<g data-button="up"><path class="button" d="M238 251 H268 V278 L253 290 L238 278Z"/><text class="button-name" x="253" y="266">↑</text></g>
+<g data-button="down"><path class="button" d="M238 329 H268 V302 L253 290 L238 302Z"/><text class="button-name" x="253" y="316">↓</text></g>
+<g data-button="left"><path class="button" d="M214 275 V305 H241 L253 290 L241 275Z"/><text class="button-name" x="228" y="290">←</text></g>
+<g data-button="right"><path class="button" d="M292 275 V305 H265 L253 290 L265 275Z"/><text class="button-name" x="279" y="290">→</text></g>
+<g data-button="back"><circle class="button" cx="291" cy="188" r="15"/><text class="button-name" x="291" y="187">▱</text></g>
+<g data-button="start"><circle class="button" cx="389" cy="188" r="15"/><text class="button-name" x="389" y="187">≡</text></g>
+<g data-button="guide" class="guide"><circle class="button" cx="340" cy="162" r="20"/><text x="340" y="162">⌂</text></g>
+<g data-button="y"><circle class="button" cx="505" cy="143" r="21"/><text x="505" y="144">Y</text></g>
+<g data-button="a"><circle class="button" cx="505" cy="229" r="21"/><text x="505" y="230">A</text></g>
+<g data-button="x"><circle class="button" cx="462" cy="186" r="21"/><text x="462" y="187">X</text></g>
+<g data-button="b"><circle class="button" cx="548" cy="186" r="21"/><text x="548" y="187">B</text></g>
+</svg>

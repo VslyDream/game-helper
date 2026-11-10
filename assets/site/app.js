@@ -1,5 +1,6 @@
 import {h, notify, commandButton} from './core/ui.js';
 import {createBridge} from './core/bridge.js';
+import {mountNavigation} from './core/navigation.js';
 
 async function start() {
   const configResponse = await fetch('./config.json');
@@ -15,14 +16,17 @@ async function start() {
     snapshots:load(selected.has('snapshots'), './modules/snapshots/index.js'),
     replays:load(selected.has('replay-camera') || selected.has('replay-players'), './modules/replays/index.js'),
     catalog:load(selected.has('catalog'), './modules/catalog/index.js'),
-    staging:load(selected.has('staging'), './modules/staging/index.js')
+    staging:load(selected.has('staging'), './modules/staging/index.js'),
+    controller:load(selected.has('controller'), './modules/controller/index.js')
   };
   for (const promise of Object.values(modules)) promise?.catch(() => {});
   const bridge = await createBridge(config);
   const context = {config, bridge};
   if (selected.has('snapshots') || selected.has('replay-camera') || selected.has('replay-players'))
     document.head.append(h('link', {rel:'stylesheet',href:'./core/gallery.css'}));
-  const page = new URLSearchParams(location.search).get('page') || 'cheats';
+  const requestedPage = new URLSearchParams(location.search).get('page') || 'cheats';
+  const page = requestedPage === 'controller' && selected.has('controller') ? 'settings' : requestedPage;
+  if (requestedPage === 'controller' && selected.has('controller')) history.replaceState(null, '', '?page=settings#controller-check');
   const pages = [{id:'cheats', title:'🎮 Читы'}];
   if (selected.has('snapshots')) pages.push({id:'saves', title:'💾 Сохранения'});
   if (selected.has('replay-camera') || selected.has('replay-players')) pages.push({id:'replays', title:'🎬 Записи и повторы'});
@@ -39,12 +43,7 @@ async function start() {
   document.getElementById('game-name').textContent = config.game || '';
   document.title = pages.find(p => p.id === active).title.replace(/^\S+\s/, '') + ' · ' + config.name;
   document.getElementById('footer').textContent = config.demo ? 'Деморежим · к игре не подключён' : (config.version || '');
-  for (const item of pages) {
-    document.getElementById('pages').append(h('a', {
-      href:'?page=' + item.id, class:item.id === active ? 'active' : '',
-      'aria-current':item.id === active ? 'page' : null
-    }, item.title));
-  }
+  mountNavigation(pages, active);
   const content = document.getElementById('content');
   const sections = {};
   for (const item of pages) {
@@ -69,7 +68,13 @@ async function start() {
     try {(await promise).mount(sections[item.id], context)}
     catch (error) {sections[item.id].append(h('p', {class:'hint'}, 'Страница не загрузилась: ' + error.message))}
   }
-  (await modules.settings).mount(sections.settings, context);
+  const settingsInstance = (await modules.settings).mount(sections.settings, context);
+  let controllerSettings = null;
+  if (selected.has('controller')) {
+    document.head.append(h('link', {rel:'stylesheet',href:'./modules/controller/style.css'}));
+    const controller = await modules.controller;
+    controllerSettings = controller.mountSettings(sections.settings, context);
+  }
   const categories = document.getElementById('categories');
   categories.hidden = active !== 'cheats';
   for (const section of cheatLayout.querySelectorAll('section[id]')) {
@@ -90,6 +95,6 @@ async function start() {
   });
   await bridge.refresh();
   if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
-  addEventListener('pagehide', () => bridge.close(), {once:true});
+  addEventListener('pagehide', () => {settingsInstance?.dispose(); controllerSettings?.dispose(); bridge.close()}, {once:true});
 }
 start().catch(error => notify(error.message));

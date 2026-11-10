@@ -7,7 +7,7 @@ import shutil
 
 KIT = Path(__file__).resolve().parents[1]
 ALLOWED = {'freecam', 'gamepad', 'snapshots', 'replay-camera', 'replay-players', 'distribution',
-           'catalog', 'staging', 'mcp'}
+           'catalog', 'staging', 'mcp', 'controller'}
 
 
 def create(profile, output):
@@ -27,12 +27,14 @@ def create(profile, output):
     # Complete validation before the first write.
     source = KIT / 'assets' / 'site'
     ui_modules = ['cheats', 'settings']
-    ui_modules += [m for m in ('freecam', 'snapshots', 'catalog', 'staging') if m in chosen]
+    ui_modules += [m for m in ('freecam', 'snapshots', 'catalog', 'staging', 'controller') if m in chosen]
     if chosen & {'replay-camera', 'replay-players'}:
         ui_modules.append('replays')
     for module in ui_modules:
         if not (source / 'modules' / module / 'index.js').is_file():
             raise ValueError('Отсутствует ресурс: ' + module)
+    if 'controller' in chosen and not (KIT / 'assets' / 'runtime' / 'controller_input.py').is_file():
+        raise ValueError('Отсутствует Windows-провайдер контроллера.')
     output.mkdir(parents=True)
     for item in ('index.html', 'style.css', 'app.js'):
         shutil.copy2(source / item, output / item)
@@ -45,13 +47,15 @@ def create(profile, output):
         (output / 'catalog').mkdir()  # catalog/<name>.json is written once per project (CAT-01)
     (output / 'config.json').write_text(json.dumps(profile, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     shutil.copy2(KIT / 'scripts' / 'serve.py', output / 'serve.py')
+    if 'controller' in chosen:
+        shutil.copy2(KIT / 'assets' / 'runtime' / 'controller_input.py', output / 'controller_input.py')
     requirements = output / 'requirements'
     requirements.mkdir()
     for name in ('core.md', 'ui.md', 'layout.md', 'process.md'):
         shutil.copy2(KIT / 'references' / name, requirements / name)
     shutil.copy2(KIT / 'contracts' / 'adapter.md', requirements / 'adapter.md')
     selected_specs = []
-    for module in ('freecam', 'snapshots', 'distribution', 'catalog', 'staging', 'mcp'):
+    for module in ('freecam', 'snapshots', 'distribution', 'catalog', 'staging', 'mcp', 'controller'):
         if module in chosen:
             target = module + '.md'
             shutil.copy2(KIT / 'modules' / module / 'SPEC.md', requirements / target)
@@ -60,6 +64,9 @@ def create(profile, output):
                 adapter_name = module + '-adapter.md'
                 shutil.copy2(KIT / 'modules' / module / 'ADAPTER.md', requirements / adapter_name)
                 selected_specs.append(adapter_name)
+            if module == 'controller':
+                shutil.copy2(KIT / 'modules' / module / 'VERIFIED.md', requirements / 'controller-verified.md')
+                selected_specs.append('controller-verified.md')
     if 'gamepad' in chosen:
         shutil.copy2(KIT / 'modules/freecam/GAMEPAD.md', requirements / 'gamepad.md')
         selected_specs.append('gamepad.md')
@@ -84,6 +91,11 @@ def create(profile, output):
            'Нужен настоящий API игры; сервер просмотра его не реализует.\n')
         + '\nДемо и реальный режим выбираются в `config.json`. Контракт — `requirements/adapter.md`. '
         'Пользовательские галереи и настройки хранятся отдельно от заменяемого сайта.\n', encoding='utf-8')
+    if 'controller' in chosen:
+        with (output / 'README.md').open('a', encoding='utf-8') as readme:
+            readme.write('\nКонтроллер: «Настройки → Контроллер», `?page=settings#controller-check`. `serve.py` поднимает настоящий Windows/XInput API '
+                         'независимо от деморежима игры. Для игрового адаптера импортируйте '
+                         '`ControllerService` из `controller_input.py`, см. `requirements/controller-adapter.md`.\n')
     return ui_modules
 
 

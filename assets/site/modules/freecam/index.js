@@ -16,6 +16,11 @@ export function mount(parent, context) {
       toggle({label:'',hint:'Ctrl+P / Num9',command:'freecam.set',key:'enabled',read:read('enabled'),context})),
     h('p', {class:'hint'}, 'WASD · Q / E — высота · Shift ×5 · без столкновений'), controls);
   panel.querySelector('input[type=checkbox]').setAttribute('aria-label','Свободная камера');
+  const badge = panel.querySelector('.panel-head kbd');
+  context.bridge.subscribe(state => {
+    const binding = state.hotkeys?.find(item => item.id === 'freecam');
+    if (binding && badge) badge.textContent = [binding.keys,binding.gamepadKeys?.replaceAll('+',' + ')].filter(Boolean).join(' · ') || 'Не назначено';
+  });
   if (context.config.freecam?.optics !== false) {
     const optics = h('div', {class:'control-grid optics-grid'},
       makeRange({label:'Дистанция фокуса',hint:'Ctrl + колесо',key:'focusDistance',min:.1,max:50,step:.01,unit:'м',logarithmic:true,availability:'freecam.focusDistance'}));

@@ -27,13 +27,13 @@ export function mount(parent, context) {
         input.onchange = () => send(input.checked);
         context.bridge.subscribe(state => {if (document.activeElement !== input) input.checked = !!read(state)});
         allowed(context.bridge, capability, input);
-        controls.append(h('label', {class:'switch-label'}, h('span', {}, item.label, item.hint ? h('kbd', {}, item.hint) : null), input));
+        controls.append(h('label', {class:'switch-label'}, h('span', {}, item.label, item.hint ? h('kbd', {'data-hotkey':item.id}, item.hint) : null), input));
       } else if (item.type === 'select') {
         const select = h('select', {'aria-label':item.label}, (item.options || []).map(option => h('option', {value:option.value}, option.label)));
         select.onchange = () => send(select.value);
         context.bridge.subscribe(state => {if (document.activeElement !== select && read(state) !== undefined) select.value = read(state)});
         allowed(context.bridge, capability, select);
-        controls.append(h('label', {class:'control'}, h('span', {}, item.label, item.hint ? h('kbd', {}, item.hint) : null), select));
+        controls.append(h('label', {class:'control'}, h('span', {}, item.label, item.hint ? h('kbd', {'data-hotkey':item.id}, item.hint) : null), select));
       } else if (item.type === 'pick') {
         if (context.pick) controls.append(context.pick(item, context, capability));
       } else if (item.type === 'action') {
@@ -49,5 +49,11 @@ export function mount(parent, context) {
     }
     grid.append(panel);
   }
+  context.bridge.subscribe(state => {
+    for (const badge of parent.querySelectorAll('kbd[data-hotkey]')) {
+      const binding = state.hotkeys?.find(item => item.id === badge.dataset.hotkey);
+      if (binding) badge.textContent = [binding.keys,binding.gamepadKeys?.replaceAll('+',' + ')].filter(Boolean).join(' · ') || 'Не назначено';
+    }
+  });
   return grid;
 }
