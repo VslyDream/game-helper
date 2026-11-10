@@ -40,4 +40,28 @@ export function register(ctx, config) {
   ctx.on('replays.rename', ({id,name}) => {data.items.find(item => item.id === id).name = name});
   ctx.on('replays.trash', ({id}) => {data.items.find(item => item.id === id).deleted = true});
   ctx.on('replays.restore', ({id}) => {data.items.find(item => item.id === id).deleted = false});
+  if (!kinds.includes('camera')) {delete data.looks; return}
+  // Look presets (REPLAY-23): camera/optics values plus cheats marked "look": true in config.
+  const lookKeys = ['fov','focusDistance','aperture','moveSmoothing','lookSmoothing'];
+  const lookCheats = [...(config.cheats || []), ...(config.staging?.sections || [])].flatMap(category => category.controls || []).filter(item => item.look);
+  const summary = look => ['FOV ' + look.freecam.fov, look.freecam.aperture ? 'f/' + look.freecam.aperture : '',
+    Object.keys(look.cheats).length ? 'читов: ' + Object.keys(look.cheats).length : '', look.pose ? 'ракурс' : ''].filter(Boolean).join(' · ');
+  const camera = () => Object.fromEntries(lookKeys.map(key => [key,ctx.state.freecam[key]]));
+  const look = (name, pose, values) => {const item = {id:ctx.id(),name,createdAt:ctx.now(),pose,freecam:{...camera(),...values},cheats:Object.fromEntries(lookCheats.map(item => [item.id,ctx.state.cheats?.[item.id]]))}; item.summary = summary(item); return item};
+  data.looks ||= [look('Закат, FOV 35',true,{fov:35}), look('Портрет, f/1.8',false,{fov:50,focusDistance:2.5,aperture:1.8})];
+  const findLook = id => {const item = data.looks.find(item => item.id === id); if (!item) throw new Error('Образ не найден.'); return item};
+  ctx.on('replays.look.save', ({name,pose}) => {data.looks.push(look(name,!!pose))});
+  ctx.on('replays.look.apply', ({id,pose}) => {
+    const item = findLook(id), skipped = [];
+    if (pose && data.kind === 'camera' && ['recording','playing'].includes(data.status)) throw new Error('Камерой управляет запись.');
+    Object.assign(ctx.state.freecam,item.freecam);
+    if (pose && item.pose) ctx.state.freecam.enabled = true;
+    for (const [key,value] of Object.entries(item.cheats)) {
+      if (ctx.state.availability['cheat:' + key]?.enabled) ctx.state.cheats[key] = value;
+      else skipped.push(lookCheats.find(item => item.id === key)?.label || key);
+    }
+    return {skipped};
+  });
+  ctx.on('replays.look.rename', ({id,name}) => {findLook(id).name = name});
+  ctx.on('replays.look.delete', ({id}) => {data.looks = data.looks.filter(item => item.id !== id)});
 }

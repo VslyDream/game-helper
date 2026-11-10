@@ -1,0 +1,58 @@
+{
+  "freecam": {
+    "title": "Фрикамера (оптика — опция профиля)",
+    "ui": "freecam",
+    "specs": {"freecam.md": "modules/freecam/SPEC.md", "freecam-adapter.md": "modules/freecam/ADAPTER.md"}
+  },
+  "gamepad": {
+    "title": "Геймпад для камеры",
+    "requires": ["freecam"],
+    "specs": {"gamepad.md": "modules/freecam/GAMEPAD.md"}
+  },
+  "controller": {
+    "title": "Считывание и диагностика контроллера",
+    "ui": "controller",
+    "specs": {"controller.md": "modules/controller/SPEC.md", "controller-adapter.md": "modules/controller/ADAPTER.md",
+              "controller-verified.md": "modules/controller/VERIFIED.md"},
+    "runtime": {"controller_input.py": "assets/runtime/controller_input.py"}
+  },
+  "snapshots": {
+    "title": "Сохранения и галерея",
+    "ui": "snapshots",
+    "gallery": true,
+    "specs": {"snapshots.md": "modules/snapshots/SPEC.md", "snapshots-adapter.md": "modules/snapshots/ADAPTER.md"}
+  },
+  "replay-camera": {
+    "title": "Повторы камеры и пресеты образа",
+    "requires": ["freecam"],
+    "ui": "replays",
+    "gallery": true,
+    "specs": {"replays.md": "modules/replays/SPEC.md", "replays-adapter.md": "modules/replays/ADAPTER.md"}
+  },
+  "replay-players": {
+    "title": "Повторы игроков с реальными действиями",
+    "ui": "replays",
+    "gallery": true,
+    "specs": {"replays.md": "modules/replays/SPEC.md", "replays-adapter.md": "modules/replays/ADAPTER.md",
+              "world-state.md": "contracts/world-state.md"}
+  },
+  "catalog": {
+    "title": "Справочник предметов / сущностей",
+    "ui": "catalog",
+    "dirs": ["catalog"],
+    "specs": {"catalog.md": "modules/catalog/SPEC.md"}
+  },
+  "staging": {
+    "title": "Постановка сцены",
+    "ui": "staging",
+    "specs": {"staging.md": "modules/staging/SPEC.md"}
+  },
+  "mcp": {
+    "title": "Управление из чата (MCP)",
+    "specs": {"mcp.md": "modules/mcp/SPEC.md"}
+  },
+  "distribution": {
+    "title": "Распространение",
+    "specs": {"distribution.md": "modules/distribution/SPEC.md"}
+  }
+}

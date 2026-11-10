@@ -57,8 +57,8 @@ public static class Inspect
     public static void Register()
     {
         Api.Register("inspect.types", Types, info: Info("Найти interop-тип по имени", "{\"query\":\"string\"}"), offThread: true, dev: true);
-        Api.Register("inspect.find", Find, info: Info("Найти объекты в сцене", "{\"type\":\"string?\",\"name\":\"string?\",\"limit\":\"number?\"}"), dev: true);
-        Api.Register("inspect.get", Get, info: Info("Прочитать объект или поле", "{\"target\":\"string\",\"path\":\"string?\",\"depth\":\"number?\"}"), dev: true);
+        Api.Register("inspect.find", Find, info: Info("Найти объекты в сцене", "{\"type\":\"string?\",\"name\":\"string?\",\"limit\":\"number?\",\"assets\":\"boolean?\"}"), dev: true);
+        Api.Register("inspect.get", Get, info: Info("Прочитать объект или поле", "{\"target\":\"string\",\"path\":\"string?\",\"depth\":\"number?\",\"methods\":\"boolean?\"}"), dev: true);
         Api.Register("inspect.set", Set, info: Info("Записать поле или свойство", "{\"target\":\"string\",\"path\":\"string\",\"value\":\"any\"}"), dev: true);
         Api.Register("inspect.invoke", InvokeMethod, info: Info("Вызвать метод объекта", "{\"target\":\"string\",\"path\":\"string?\",\"method\":\"string\",\"args\":\"array?\"}"), dev: true);
         Api.Register("log.tail", LogTail, info: Info("Хвост журнала BepInEx", "{\"n\":\"number?\",\"grep\":\"string?\"}"), offThread: true, dev: true);

@@ -7,8 +7,9 @@ import shutil
 
 KIT = Path(__file__).resolve().parents[1]
 ENGINES = {'unity-il2cpp': 'plugin-il2cpp'}  # --engine → каркас плагина в templates/
-ALLOWED = {'freecam', 'gamepad', 'snapshots', 'replay-camera', 'replay-players', 'distribution',
-           'catalog', 'staging', 'mcp', 'controller'}
+# Единственный источник состава: зависимости, ресурсы UI, ТЗ и файлы каждого модуля.
+MODULES = json.loads((KIT / 'modules' / 'manifest.json').read_text(encoding='utf-8'))
+ALLOWED = set(MODULES)
 
 
 def create(profile, output):
@@ -16,8 +17,10 @@ def create(profile, output):
     unknown = chosen - ALLOWED
     if unknown:
         raise ValueError('Неизвестные модули: ' + ', '.join(sorted(unknown)))
-    if chosen & {'gamepad', 'replay-camera'} and 'freecam' not in chosen:
-        raise ValueError('Геймпад и повтор камеры требуют явно выбрать freecam.')
+    for module in sorted(chosen):
+        missing = [m for m in MODULES[module].get('requires', []) if m not in chosen]
+        if missing:
+            raise ValueError(module + ' требует явно выбрать: ' + ', '.join(missing) + '.')
     if not re.fullmatch(r'[a-z][a-z0-9-]{0,62}', profile.get('id', '')):
         raise ValueError('id: латинские строчные буквы, цифры и дефисы; начать с буквы.')
     if output.exists():
@@ -27,60 +30,44 @@ def create(profile, output):
     profile['demo'] = bool(profile.get('demo', False))
     # Complete validation before the first write.
     source = KIT / 'assets' / 'site'
-    ui_modules = ['cheats', 'settings']
-    ui_modules += [m for m in ('freecam', 'snapshots', 'catalog', 'staging', 'controller') if m in chosen]
-    if chosen & {'replay-camera', 'replay-players'}:
-        ui_modules.append('replays')
+    picked = [MODULES[m] for m in MODULES if m in chosen]  # порядок манифеста
+    ui_modules = list(dict.fromkeys(['cheats', 'settings'] + [m['ui'] for m in picked if m.get('ui')]))
+    specs, runtime = {}, {}
+    for module in picked:
+        specs.update(module.get('specs', {}))
+        runtime.update(module.get('runtime', {}))
     for module in ui_modules:
         if not (source / 'modules' / module / 'index.js').is_file():
             raise ValueError('Отсутствует ресурс: ' + module)
-    if 'controller' in chosen and not (KIT / 'assets' / 'runtime' / 'controller_input.py').is_file():
-        raise ValueError('Отсутствует Windows-провайдер контроллера.')
+    for path in list(specs.values()) + list(runtime.values()):
+        if not (KIT / path).is_file():
+            raise ValueError('Отсутствует файл модуля: ' + path)
     engine = profile.get('engine') or None
     if engine is not None and engine not in ENGINES:
         raise ValueError('engine: ' + ', '.join(sorted(ENGINES)) + ' или пусто.')
     output.mkdir(parents=True)
     for item in ('index.html', 'style.css', 'app.js'):
         shutil.copy2(source / item, output / item)
-    ignored = ([] if profile['demo'] else ['demo.js']) + ([] if any(m in ui_modules for m in ('snapshots','replays')) else ['gallery.css'])
+    ignored = ([] if profile['demo'] else ['demo.js']) + ([] if any(m.get('gallery') for m in picked) else ['gallery.css'])
     shutil.copytree(source / 'core', output / 'core', ignore=shutil.ignore_patterns(*ignored))
     for module in ui_modules:
         shutil.copytree(source / 'modules' / module, output / 'modules' / module,
                         ignore=shutil.ignore_patterns('demo.js') if not profile['demo'] else None)
-    if 'catalog' in chosen:
-        (output / 'catalog').mkdir()  # catalog/<name>.json is written once per project (CAT-01)
+    for module in picked:
+        for folder in module.get('dirs', []):
+            (output / folder).mkdir(exist_ok=True)  # например catalog/<name>.json (CAT-01)
     (output / 'config.json').write_text(json.dumps(profile, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     shutil.copy2(KIT / 'scripts' / 'serve.py', output / 'serve.py')
-    if 'controller' in chosen:
-        shutil.copy2(KIT / 'assets' / 'runtime' / 'controller_input.py', output / 'controller_input.py')
+    for target, path in runtime.items():
+        shutil.copy2(KIT / path, output / target)
     requirements = output / 'requirements'
     requirements.mkdir()
     for name in ('core.md', 'ui.md', 'layout.md', 'process.md'):
         shutil.copy2(KIT / 'references' / name, requirements / name)
     shutil.copy2(KIT / 'contracts' / 'adapter.md', requirements / 'adapter.md')
-    selected_specs = []
-    for module in ('freecam', 'snapshots', 'distribution', 'catalog', 'staging', 'mcp', 'controller'):
-        if module in chosen:
-            target = module + '.md'
-            shutil.copy2(KIT / 'modules' / module / 'SPEC.md', requirements / target)
-            selected_specs.append(target)
-            if (KIT / 'modules' / module / 'ADAPTER.md').exists():
-                adapter_name = module + '-adapter.md'
-                shutil.copy2(KIT / 'modules' / module / 'ADAPTER.md', requirements / adapter_name)
-                selected_specs.append(adapter_name)
-            if module == 'controller':
-                shutil.copy2(KIT / 'modules' / module / 'VERIFIED.md', requirements / 'controller-verified.md')
-                selected_specs.append('controller-verified.md')
-    if 'gamepad' in chosen:
-        shutil.copy2(KIT / 'modules/freecam/GAMEPAD.md', requirements / 'gamepad.md')
-        selected_specs.append('gamepad.md')
-    if 'replays' in ui_modules:
-        shutil.copy2(KIT / 'modules/replays/SPEC.md', requirements / 'replays.md')
-        shutil.copy2(KIT / 'modules/replays/ADAPTER.md', requirements / 'replays-adapter.md')
-        selected_specs.extend(['replays.md','replays-adapter.md'])
-    if 'replay-players' in chosen:
-        shutil.copy2(KIT / 'contracts/world-state.md', requirements / 'world-state.md')
-        selected_specs.append('world-state.md')
+    for target, path in specs.items():
+        shutil.copy2(KIT / path, requirements / target)
+    selected_specs = list(specs)
     # Этап исследования: заготовки docs/, правила и плейбуки, разведка и цикл сборки.
     templates = KIT / 'templates'
     shutil.copytree(templates / 'docs', output / 'docs',

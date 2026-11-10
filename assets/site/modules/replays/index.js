@@ -26,7 +26,14 @@ export function mount(parent, context) {
   const gallery = h('div', {class:'gallery replay-gallery'});
   const trashCount = h('span', {}, '0');
   const trash = h('button', {}, 'Корзина ', trashCount);
-  parent.append(heading('Записи и повторы', trash), controls, tracks, gallery);
+  // REPLAY-23. Look presets: a named camera/optics/view-cheats state, applied in one click without recording.
+  const hasLooks = config.modules.includes('replay-camera');
+  const looks = h('div', {class:'looks'});
+  const lookPose = h('input', {type:'checkbox',checked:true});
+  const lookSave = commandButton('＋ Сохранить образ', 'replays.look.save', context, () => null);
+  const lookPanel = h('section', {class:'panel replay-looks',hidden:true},
+    h('div', {class:'panel-head'}, h('h2', {}, 'Образы'), h('div', {class:'inline'}, h('label', {class:'inline look-pose'}, lookPose, 'с ракурсом'), lookSave)), looks);
+  parent.append(heading('Записи и повторы', trash), controls, lookPanel, tracks, gallery);
   controls.append(
     h('div', {class:'inline wrap'}, kinds.length > 1 ? kind : h('span', {}, kinds[0].label), record, pause, stop, stateLabel),
     h('div', {class:'inline wrap playback-row'}, play, restart, observerLabel,
@@ -39,9 +46,24 @@ export function mount(parent, context) {
   timeline.oninput = () => timelineValue.textContent = time(Number(timeline.value)) + ' / ' + time(bridge.state.replays?.duration);
   timeline.onchange = () => send('seek', {time:Number(timeline.value)});
   observer.onchange = () => send('observer', {enabled:observer.checked});
+  lookSave.addEventListener('click', async () => {
+    const camera = bridge.state.freecam || {};
+    const name = await inputDialog('Название образа', [camera.fov ? 'FOV ' + num(camera.fov) : '', camera.aperture ? 'f/' + num(camera.aperture) : ''].filter(Boolean).join(', '));
+    if (name) send('look.save', {name,pose:lookPose.checked});
+  });
+  // Partial apply is a success: the adapter names what it skipped (REPLAY-27).
+  const applyLook = async (item, pose = true) => {
+    const result = await bridge.call('replays.look.apply', {id:item.id,pose:pose && !!item.pose});
+    if (result?.skipped?.length) notify('Применено без: ' + result.skipped.join(', '));
+  };
+  const pins = hasLooks ? context.pins : null;
+  pins?.resolver('look', key => {
+    const item = bridge.state.replays?.looks?.find(look => 'look:' + look.id === key);
+    return item ? {key, label:'🎨 ' + item.name, kind:'action', capability:'replays.look.apply', run:() => applyLook(item)} : null;
+  });
   allowed(bridge,'replays.speed',speed);
   allowed(bridge,'replays.observer',observer);
-  let gallerySignature = '', tracksSignature = '', trashDialog;
+  let gallerySignature = '', tracksSignature = '', looksSignature = '', trashDialog;
   function action(label, command, args) {
     return commandButton(label, 'replays.' + command, {...context,transient:true}, args);
   }
@@ -52,6 +74,27 @@ export function mount(parent, context) {
     trashDialog.replaceChildren(h('div', {class:'panel-head'}, h('h2', {}, 'Корзина повторов'), close),
       ...items.map(item => h('div', {class:'trash-row'}, item.name, action('Восстановить','restore',() => ({id:item.id})))),
       items.length ? '' : h('p', {class:'hint'}, 'Корзина пуста.'));
+  }
+  function renderLooks(data, state, force = false) {
+    const items = hasLooks ? data.looks || [] : [];
+    const next = JSON.stringify([items,bridge.busy,state.availability]);
+    if (!force && next === looksSignature) return;
+    looksSignature = next;
+    lookPanel.hidden = !hasLooks || !(items.length || state.availability?.['replays.look.save']);
+    const available = bridge.available('replays.look.apply');
+    looks.replaceChildren(...items.map(item => {
+      const apply = h('button', {type:'button',class:'look-apply',disabled:!available.enabled,title:available.enabled ? item.summary || '' : available.reason}, item.name);
+      apply.onclick = () => applyLook(item).catch(error => notify(error.message));
+      const still = item.pose ? h('button', {type:'button',disabled:!available.enabled}, 'Без перемещения') : null;
+      if (still) still.onclick = () => applyLook(item,false).catch(error => notify(error.message));
+      const rename = action('Название','look.rename',() => null);
+      rename.addEventListener('click', async () => {const name = await inputDialog('Название образа',item.name); if (name) send('look.rename',{id:item.id,name})});
+      const pin = pins ? h('button', {type:'button'}, pins.isPinned('look:' + item.id) ? '📌 Открепить из меню' : '📌 Закрепить в меню') : null;
+      if (pin) pin.onclick = async () => {await pins.toggle('look:' + item.id); renderLooks(bridge.state.replays || {},bridge.state,true)};
+      return h('span', {class:'look'}, apply, h('details', {class:'card-menu'}, h('summary', {'aria-label':'Действия: ' + item.name}, '•••'),
+        h('div', {}, still, rename, pin, action('Удалить','look.delete',() => ({id:item.id})))));
+    }));
+    if (!items.length) looks.append(h('p', {class:'hint'}, 'Пока нет образов.'));
   }
   trash.onclick = () => {
     trashDialog = h('dialog', {class:'trash-dialog'}); renderTrash();
@@ -92,6 +135,7 @@ export function mount(parent, context) {
         return h('div', {class:'replay-track'}, track.name, h('label', {}, enabled,' Дорожка'), h('label', {}, actions,' Действия'), action('Перезаписать','overdub',() => ({id:track.id})));
       }), action('＋ Добавить игрока','addTrack',() => ({})));
     }
+    renderLooks(data,state);
     const nextGallery = JSON.stringify([data.items,bridge.busy,state.availability]);
     if (nextGallery === gallerySignature) return;
     gallerySignature = nextGallery;
