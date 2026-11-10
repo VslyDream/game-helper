@@ -26,8 +26,15 @@ export function mount(parent, context) {
     if (data) try {await bridge.call('snapshots.import', {fileName:file.name,data})} catch (error) {notify(error.message)}
     importFile.value = '';
   };
+  const pins = context.pins;
+  // Pinned loads resolve by id, so a renamed or trashed snapshot updates or disappears from the menu by itself.
+  pins?.resolver('snapshot', key => {
+    const item = bridge.state.snapshots?.items?.find(s => 'snapshot:' + s.id === key && !s.deleted);
+    return item ? {key, label:'💾 ' + item.name, kind:'action', capability:'snapshots.load', run:() => bridge.call('snapshots.load', {id:item.id})} : null;
+  });
+  const retakePin = pins?.register({key:'snapshots:retake', label:'↻ Дубль заново', kind:'action', hotkey:'retake', capability:'snapshots.retake', run:() => bridge.call('snapshots.retake', {})});
   parent.append(
-    heading('Сохранения', commandButton('↻ Дубль заново', 'snapshots.retake', context, () => ({})), commandButton('＋ Снять и сохранить', 'snapshots.capture', context, () => ({playthrough:selected === 'all' ? 'Основное' : selected}), 'primary')),
+    heading('Сохранения', h('span', {class:'inline pin-host'}, commandButton('↻ Дубль заново', 'snapshots.retake', context, () => ({})), retakePin), commandButton('＋ Снять и сохранить', 'snapshots.capture', context, () => ({playthrough:selected === 'all' ? 'Основное' : selected}), 'primary')),
     h('div', {class:'gallery-toolbar'}, h('div', {class:'inline'}, filter, newPlaythrough), h('div', {class:'inline'}, importButton, trash)),
     chips, importFile, gallery
   );
@@ -50,6 +57,13 @@ export function mount(parent, context) {
     const link = h('a', {href:url,download:result.download.fileName || 'snapshot.zip'});
     document.body.append(link); link.click(); link.remove();
   }
+  function pinItem(item) {
+    if (!pins) return null;
+    const key = 'snapshot:' + item.id;
+    const button = h('button', {type:'button'}, pins.isPinned(key) ? '📌 Открепить из меню' : '📌 Закрепить в меню');
+    button.onclick = async () => {await pins.toggle(key); render(true)};
+    return button;
+  }
   function card(item) {
     const url = safeImageUrl(item.imageUrl);
     const image = url ? h('img', {class:'snapshot-image',src:url,alt:item.name,tabindex:0}) : h('div', {class:'snapshot-image empty-image'}, 'Кадр недоступен');
@@ -58,6 +72,7 @@ export function mount(parent, context) {
       h('div', {},
         action('Название', 'rename', async () => {const name = await inputDialog('Название снимка', item.name); return name ? {id:item.id,name} : null}),
         action('Экспорт', 'export', () => ({id:item.id}), download),
+        pinItem(item),
         action('В корзину', 'trash', () => ({id:item.id}))));
     const date = new Date(item.createdAt);
     const info = [Number.isNaN(date.valueOf()) ? '' : date.toLocaleString('ru-RU'), item.scene, item.playthrough].filter(Boolean).join(' · ');

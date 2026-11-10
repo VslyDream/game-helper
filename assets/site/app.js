@@ -1,6 +1,8 @@
 import {h, notify, commandButton} from './core/ui.js';
+import {syncHotkeyBadges} from './modules/cheats/index.js';
 import {createBridge} from './core/bridge.js';
 import {mountNavigation} from './core/navigation.js';
+import {createPins} from './core/pins.js';
 
 async function start() {
   const configResponse = await fetch('./config.json');
@@ -22,6 +24,7 @@ async function start() {
   for (const promise of Object.values(modules)) promise?.catch(() => {});
   const bridge = await createBridge(config);
   const context = {config, bridge};
+  context.pins = createPins(context, document.getElementById('pins'));
   if (selected.has('snapshots') || selected.has('replay-camera') || selected.has('replay-players'))
     document.head.append(h('link', {rel:'stylesheet',href:'./core/gallery.css'}));
   const requestedPage = new URLSearchParams(location.search).get('page') || 'cheats';
@@ -29,7 +32,8 @@ async function start() {
   if (requestedPage === 'controller' && selected.has('controller')) history.replaceState(null, '', '?page=settings#controller-check');
   const pages = [{id:'cheats', title:'🎮 Читы'}];
   if (selected.has('snapshots')) pages.push({id:'saves', title:'💾 Сохранения'});
-  if (selected.has('replay-camera') || selected.has('replay-players')) pages.push({id:'replays', title:'🎬 Записи и повторы'});
+  if (selected.has('staging')) pages.push({id:'staging', title:'🎬 Постановка'});
+  if (selected.has('replay-camera') || selected.has('replay-players')) pages.push({id:'replays', title:'📼 Записи и повторы'});
   // Project pages: config.json → pages [{id,title,module}]; the shell itself stays unchanged.
   const reserved = new Set(pages.map(p => p.id).concat('settings'));
   for (const extra of config.pages || []) {
@@ -42,7 +46,8 @@ async function start() {
   nameNode.firstChild.textContent = config.name;
   document.getElementById('game-name').textContent = config.game || '';
   document.title = pages.find(p => p.id === active).title.replace(/^\S+\s/, '') + ' · ' + config.name;
-  document.getElementById('footer').textContent = config.demo ? 'Деморежим · к игре не подключён' : (config.version || '');
+  // The demo is marked once, here; the header shows only the connection (layout.md).
+  document.getElementById('footer').textContent = config.demo ? [config.version, 'демо, к игре не подключён'].filter(Boolean).join(' · ') : (config.version || '');
   mountNavigation(pages, active);
   const content = document.getElementById('content');
   const sections = {};
@@ -60,7 +65,7 @@ async function start() {
     const camera = await modules.freecam;
     camera.mount(cheatLayout, context);
   }
-  if (selected.has('staging')) (await modules.staging).mount(cheatLayout, context);
+  if (selected.has('staging')) (await modules.staging).mount(sections.staging, context);
   if (selected.has('snapshots')) (await modules.snapshots).mount(sections.saves, context);
   if (sections.replays) (await modules.replays).mount(sections.replays, context);
   const custom = pages.filter(p => p.custom).map(item => [item, import(new URL(item.module, location.href).href)]);
@@ -80,14 +85,17 @@ async function start() {
   for (const section of cheatLayout.querySelectorAll('section[id]')) {
     categories.append(h('a', {href:'?page=cheats#' + section.id}, section.querySelector('h2').textContent));
   }
-  document.getElementById('game-controls').append(
-    commandButton('Запустить игру', 'game.launch', context, () => ({}), 'quiet'),
-    commandButton('Закрыть игру', 'game.close', context, () => ({}), 'quiet')
-  );
+  // One game button at a time: «Запустить» while the game is closed, «Закрыть» while it runs.
+  const launch = commandButton('Запустить игру', 'game.launch', context, () => ({}), 'quiet');
+  const close = commandButton('Закрыть игру', 'game.close', context, () => ({}), 'quiet');
+  document.getElementById('game-controls').append(launch, close);
+  bridge.subscribe(state => {launch.hidden = !!state.gameRunning; close.hidden = !state.gameRunning});
+  syncHotkeyBadges(document.querySelector('.app-shell'), bridge);
+  context.pins.render();
   bridge.subscribe(state => {
-    const labels = {offline:'Сервис недоступен', closed:'Игра закрыта', starting:'Игра запускается', waiting:'Ожидание подключения', menu:'Подключено меню', level:'Игра подключена', error:'Ошибка подключения'};
+    const labels = {offline:'Сервис недоступен', closed:'Игра закрыта', starting:'Игра запускается', waiting:'Ожидание подключения', menu:'В меню игры', level:'В уровне', error:'Ошибка подключения'};
     const role = {host:'хост', client:'клиент'}[state.role];
-    document.getElementById('connection-text').textContent = config.demo ? 'Режим макета' : (labels[state.connection] || 'Ожидание подключения') + (role ? ' · ' + role : '');
+    document.getElementById('connection-text').textContent = (labels[state.connection] || 'Ожидание подключения') + (role ? ' · ' + role : '');
     document.getElementById('connection-dot').classList.toggle('connected', ['menu','level'].includes(state.connection));
     const operation = document.getElementById('operation');
     operation.hidden = !state.operation;

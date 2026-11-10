@@ -92,10 +92,15 @@ export function mount(parent, context) {
     const field = isPad ? 'gamepadKeys' : 'keys', defaultField = isPad ? 'gamepadDefault' : 'default';
     const command = isPad ? 'hotkeys.gamepad.set' : 'hotkeys.set', resetCommand = isPad ? 'hotkeys.gamepad.reset' : 'hotkeys.reset';
     const available = bridge.available(command), resetAvailable = bridge.available(resetCommand);
-    const button = h('button',{type:'button',class:'hotkey-key','aria-label':`Назначить ${isPad ? 'геймпад' : 'клавиатуру'}: ${item.label}`,disabled:!available.enabled,title:available.enabled ? '' : available.reason},item[field] ? item[field].replaceAll('+',' + ') : 'Не назначено');
+    const assigned = !!item[field];
+    const button = h('button',{type:'button',class:'hotkey-key' + (assigned ? '' : ' empty'),'aria-label':`Назначить ${isPad ? 'геймпад' : 'клавиатуру'}: ${item.label}`,disabled:!available.enabled,title:available.enabled ? '' : available.reason},assigned ? item[field].replaceAll('+',' + ') : '＋ Назначить');
     button.onclick = () => editBinding(item,device);
-    const reset = h('button',{type:'button',class:'quiet hotkey-reset','aria-label':`Сбросить ${isPad ? 'геймпад' : 'клавиатуру'}: ${item.label}`,title:'Сбросить',disabled:!resetAvailable.enabled || item[defaultField] === undefined || (item[field] || '') === (item[defaultField] || '')},'↺');
-    reset.onclick = async () => {try {await bridge.call(resetCommand,{id:item.id});} catch (failure) {notify(failure.message);}};
+    // Reset exists only where there is something to reset: the binding differs from its default.
+    const changed = item[defaultField] !== undefined && (item[field] || '') !== (item[defaultField] || '');
+    const back = item[defaultField] ? item[defaultField].replaceAll('+',' + ') : 'без привязки';
+    const reset = changed ? h('button',{type:'button',class:'quiet hotkey-reset','aria-label':`Вернуть ${back}: ${item.label}`,title:'Вернуть ' + back,disabled:!resetAvailable.enabled},'↺') : null;
+    if (changed) button.classList.add('changed');
+    if (reset) reset.onclick = async () => {try {await bridge.call(resetCommand,{id:item.id});} catch (failure) {notify(failure.message);}};
     let warning = isPad ? item.gamepadConflict : item.conflict;
     try {warning ||= bindingConflict(bridge.state.hotkeys || [],item.id,device,item[field] || '');} catch {}
     return h('div',{class:'hotkey-cell',role:'cell'},h('small',{class:'hotkey-device-label'},label),h('div',{class:'inline'},button,reset),warning ? h('small',{class:'hotkey-warning'},warning) : null);

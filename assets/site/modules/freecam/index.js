@@ -19,7 +19,7 @@ export function mount(parent, context) {
   const badge = panel.querySelector('.panel-head kbd');
   context.bridge.subscribe(state => {
     const binding = state.hotkeys?.find(item => item.id === 'freecam');
-    if (binding && badge) badge.textContent = [binding.keys,binding.gamepadKeys?.replaceAll('+',' + ')].filter(Boolean).join(' · ') || 'Не назначено';
+    if (binding && badge) {badge.textContent = [binding.keys,binding.gamepadKeys?.replaceAll('+',' + ')].filter(Boolean).join(' · '); badge.hidden = !badge.textContent}
   });
   if (context.config.freecam?.optics !== false) {
     const optics = h('div', {class:'control-grid optics-grid'},
