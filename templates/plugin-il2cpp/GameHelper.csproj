@@ -1,0 +1,97 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Адаптер хелпера: плагин BepInEx 6 BE (be.7xx) для Unity IL2CPP.
+
+    Сборка (путь к копии игры с установленным BepInEx обязателен):
+      dotnet build GameHelper.csproj -c Release -p:GameDir="D:\Games\MyGame"
+    До первого запуска игры с BepInEx (папки BepInEx\interop ещё нет) — собрать против своей копии interop:
+      ... -p:InteropDir="..\research\interop"
+    Если игра запущена, сборка остановится до копирования (иначе MSB3027 «файл занят»).
+    Закрыть игру автоматически:  -p:KillGame=true   (нужен GameExe).
+
+    BepInExVersion — только для памяти/README: API BepInEx 6 BE меняется между сборками,
+    номер BE закрепляется на проект и меняется осознанно (references/engines/unity-il2cpp-bepinex6.md).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>GameHelper</AssemblyName>
+    <RootNamespace>GameHelper</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- Номера строк в стектрейсах LogOutput.log без отдельного .pdb -->
+    <DebugType>embedded</DebugType>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <NuGetAudit>false</NuGetAudit>
+    <!-- CS0618: в interop Unity 6 много [Obsolete] (FindObjectsOfType и т.п.) -->
+    <NoWarn>$(NoWarn);CS0618;CS8632</NoWarn>
+
+    <BepInExVersion>6.0.0-be.791</BepInExVersion>
+
+    <!-- GameDir обязателен: -p:GameDir=... или paths.json → dev_cycle.py передаёт сам -->
+    <BepInExCoreDir Condition="'$(BepInExCoreDir)' == ''">$(GameDir)\BepInEx\core</BepInExCoreDir>
+    <InteropDir Condition="'$(InteropDir)' == ''">$(GameDir)\BepInEx\interop</InteropDir>
+    <DeployDir Condition="'$(DeployDir)' == ''">$(GameDir)\BepInEx\plugins\$(AssemblyName)</DeployDir>
+    <!-- Имя процесса игры для проверки «игра запущена» (например MyGame.exe). Пусто — проверка пропускается. -->
+    <GameExe Condition="'$(GameExe)' == ''"></GameExe>
+    <KillGame Condition="'$(KillGame)' == ''">false</KillGame>
+    <Deploy Condition="'$(Deploy)' == ''">true</Deploy>
+  </PropertyGroup>
+
+  <!-- Вспомогательный проект InteropFix лежит рядом и в эту сборку не входит. -->
+  <ItemGroup>
+    <Compile Remove="InteropFix\**" />
+    <None Remove="InteropFix\**" />
+    <Content Remove="InteropFix\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- BepInEx\core. BepInEx.Unity.Common есть не во всех BE-сборках — отсутствие даёт только предупреждение. -->
+    <CoreRef Include="BepInEx.Core;BepInEx.Unity.IL2CPP;BepInEx.Unity.Common;0Harmony;Il2CppInterop.Runtime;Il2CppInterop.Common" />
+    <!--
+      BepInEx\interop — минимум для шаблона:
+        Il2Cppmscorlib                    Il2CppSystem.*, рефлексия Il2Cpp
+        UnityEngine.CoreModule            MonoBehaviour, Application, Time, Resources, SceneManager, Texture2D
+        UnityEngine.InputLegacyModule     Input.GetKeyDown для хоткеев (если игра на старом Input Manager)
+        UnityEngine.ImageConversionModule EncodeToPNG/EncodeToJPG
+        UnityEngine.ScreenCaptureModule   ScreenCapture.CaptureScreenshotAsTexture
+        Assembly-CSharp                   классы игры (часто код игры разнесён по своим сборкам — добавить их сюда)
+      Дописывать по мере надобности: UnityEngine.UI, Unity.TextMeshPro, Unity.InputSystem, UnityEngine.PhysicsModule, ...
+    -->
+    <InteropRef Include="Il2Cppmscorlib;UnityEngine.CoreModule;UnityEngine.InputLegacyModule;UnityEngine.ImageConversionModule;UnityEngine.ScreenCaptureModule;Assembly-CSharp" />
+    <Reference Include="@(CoreRef)">
+      <HintPath>$(BepInExCoreDir)\%(Identity).dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="@(InteropRef)">
+      <HintPath>$(InteropDir)\%(Identity).dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Понятные ошибки вместо сотни CS0246, если путь не задан или BepInEx не установлен/не запускался. -->
+  <Target Name="CheckGameDir" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="'$(GameDir)' == ''" Text="Не задан GameDir: dotnet build -p:GameDir=&quot;путь к копии игры с BepInEx&quot; (или запускай через tools\dev_cycle.py)." />
+    <Error Condition="!Exists('$(BepInExCoreDir)\BepInEx.Unity.IL2CPP.dll')" Text="Нет $(BepInExCoreDir)\BepInEx.Unity.IL2CPP.dll — BepInEx 6 IL2CPP не установлен в GameDir=$(GameDir)." />
+    <Error Condition="!Exists('$(InteropDir)\UnityEngine.CoreModule.dll')" Text="Нет interop-сборок в $(InteropDir). Один раз запусти игру с BepInEx (он сгенерирует interop) или укажи -p:InteropDir=..." />
+  </Target>
+
+  <!-- Запущенная игра держит DLL плагина: копирование упадёт с MSB3027. Проверяем заранее. -->
+  <Target Name="CheckGameNotRunning" BeforeTargets="BeforeBuild" Condition="'$(OS)' == 'Windows_NT' and '$(GameExe)' != '' and '$(Deploy)' == 'true'">
+    <Exec Command="&quot;$(SystemRoot)\System32\tasklist.exe&quot; /FI &quot;IMAGENAME eq $(GameExe)&quot; /NH | &quot;$(SystemRoot)\System32\find.exe&quot; /I &quot;$(GameExe)&quot; &gt; nul" IgnoreExitCode="true" StandardOutputImportance="low" EchoOff="true">
+      <Output TaskParameter="ExitCode" PropertyName="_GameRunningCode" />
+    </Exec>
+    <Error Condition="'$(_GameRunningCode)' == '0' and '$(KillGame)' != 'true'" Text="Игра $(GameExe) запущена — DLL плагина занята. Закрой игру (команда game.close / tools\dev_cycle.py) или собери с -p:KillGame=true." />
+    <Exec Condition="'$(_GameRunningCode)' == '0' and '$(KillGame)' == 'true'" Command="&quot;$(SystemRoot)\System32\taskkill.exe&quot; /F /IM &quot;$(GameExe)&quot; &amp;&amp; ping -n 3 127.0.0.1 &gt; nul" IgnoreExitCode="true" />
+  </Target>
+
+  <!-- Установка: BepInEx\plugins\<AssemblyName>\ (данные пользователя туда не кладём — CORE-16). -->
+  <Target Name="DeployToGame" AfterTargets="Build" Condition="'$(Deploy)' == 'true'">
+    <MakeDir Directories="$(DeployDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(DeployDir)" Retries="3" RetryDelayMilliseconds="500" />
+    <Message Importance="high" Text="$(AssemblyName) -> $(DeployDir)" />
+  </Target>
+</Project>

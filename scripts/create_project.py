@@ -6,6 +6,7 @@ import re
 import shutil
 
 KIT = Path(__file__).resolve().parents[1]
+ENGINES = {'unity-il2cpp': 'plugin-il2cpp'}  # --engine → каркас плагина в templates/
 ALLOWED = {'freecam', 'gamepad', 'snapshots', 'replay-camera', 'replay-players', 'distribution',
            'catalog', 'staging', 'mcp', 'controller'}
 
@@ -35,6 +36,9 @@ def create(profile, output):
             raise ValueError('Отсутствует ресурс: ' + module)
     if 'controller' in chosen and not (KIT / 'assets' / 'runtime' / 'controller_input.py').is_file():
         raise ValueError('Отсутствует Windows-провайдер контроллера.')
+    engine = profile.get('engine') or None
+    if engine is not None and engine not in ENGINES:
+        raise ValueError('engine: ' + ', '.join(sorted(ENGINES)) + ' или пусто.')
     output.mkdir(parents=True)
     for item in ('index.html', 'style.css', 'app.js'):
         shutil.copy2(source / item, output / item)
@@ -77,8 +81,27 @@ def create(profile, output):
     if 'replay-players' in chosen:
         shutil.copy2(KIT / 'contracts/world-state.md', requirements / 'world-state.md')
         selected_specs.append('world-state.md')
+    # Этап исследования: заготовки docs/, правила и плейбуки, разведка и цикл сборки.
+    templates = KIT / 'templates'
+    shutil.copytree(templates / 'docs', output / 'docs',
+                    ignore=shutil.ignore_patterns('MODDING_PLAN.md', 'knowledge-card.md'))
+    shutil.copy2(templates / 'docs' / 'knowledge-card.md', output / 'docs' / 'knowledge.md')
+    shutil.copytree(templates / 'tools', output / 'tools', ignore=shutil.ignore_patterns('__pycache__'))
+    shutil.copy2(KIT / 'scripts' / 'recon.py', output / 'tools' / 'recon.py')
+    # recon.py --out берёт шаблон плана рядом с собой.
+    shutil.copy2(templates / 'docs' / 'MODDING_PLAN.md', output / 'tools' / 'MODDING_PLAN.template.md')
+    for name in ('research.md', 'pitfalls.md', 'harmony-cheatsheet.md'):
+        shutil.copy2(KIT / 'references' / name, requirements / name)
+    shutil.copytree(KIT / 'references' / 'engines', requirements / 'engines')
+    if engine:
+        shutil.copytree(templates / ENGINES[engine], output / 'adapter',
+                        ignore=shutil.ignore_patterns('bin', 'obj'))
     (output / 'AGENTS.md').write_text(
-        '# Хелпер выбранной игры\n\nПрофиль: `config.json`. Прочитайте `requirements/core.md`, `ui.md`, '
+        '# Хелпер выбранной игры\n\nПрофиль: `config.json`. Начните с исследования: `requirements/research.md`, '
+        'разведка `python tools/recon.py "<папка игры>" --out docs/MODDING_PLAN.md`, один плейбук движка из '
+        '`requirements/engines/`, журнал `docs/MODLOG.md`, карточка игры `docs/knowledge.md`'
+        + (', каркас плагина `adapter/`' if engine else '')
+        + '.\n\nПеред сайтом и адаптером прочитайте `requirements/core.md`, `ui.md`, '
         '`layout.md`, `process.md` и `adapter.md` в той же папке. Дополнительные требования: '
         + (', '.join('`requirements/' + name + '`' for name in selected_specs) or 'нет')
         + '.\n\nРеализуйте игровой адаптер и выбранные читы. Ресурсы UI и демоданные не доказывают работу в игре. '
@@ -107,6 +130,7 @@ def main():
     parser.add_argument('--name')
     parser.add_argument('--id')
     parser.add_argument('--demo', action='store_true', help='Локальные примеры вместо реальной игры')
+    parser.add_argument('--engine', choices=sorted(ENGINES), help='Скопировать каркас плагина в adapter/')
     args = parser.parse_args()
     profile = json.loads((args.profile or KIT / 'project.example.json').read_text(encoding='utf-8-sig'))
     if args.modules is not None:
@@ -115,6 +139,8 @@ def main():
         profile['name'] = args.name
     if args.id:
         profile['id'] = args.id
+    if args.engine:
+        profile['engine'] = args.engine
     if args.demo:
         profile['demo'] = True
     try:
