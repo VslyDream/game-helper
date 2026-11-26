@@ -43,6 +43,43 @@ export function gamepadBinding(value) {
   }));
   return PAD_BUTTONS.filter(button => selected.has(button)).join('+');
 }
+// Reading a combination from a real controller for the binding dialog. A trigger counts as pressed from the same
+// threshold as in the game adapter.
+export const PAD_TRIGGER_PRESS = 0.5;
+const WINDOWS_BUTTONS = {a:'A',b:'B',x:'X',y:'Y',lb:'LB',rb:'RB',back:'View',start:'Menu',ls:'L3',rs:'R3',up:'↑',down:'↓',left:'←',right:'→'};
+const BROWSER_BUTTONS = ['A','B','X','Y','LB','RB','LT','RT','View','Menu','L3','R3','↑','↓','←','→']; // Gamepad API, mapping «standard»
+/** Pressed buttons of one device from GET /api/controller/state (Windows · XInput). */
+export function padPressedWindows(device) {
+  const pressed = Object.entries(device?.buttons || {}).filter(([name, down]) => down && WINDOWS_BUTTONS[name]).map(([name]) => WINDOWS_BUTTONS[name]);
+  if (device?.triggers?.lt >= PAD_TRIGGER_PRESS) pressed.push('LT');
+  if (device?.triggers?.rt >= PAD_TRIGGER_PRESS) pressed.push('RT');
+  return pressed;
+}
+/** Pressed buttons of one browser Gamepad; a non-standard layout is not guessed. */
+export function padPressedBrowser(pad) {
+  if (!pad || pad.mapping !== 'standard') return [];
+  return BROWSER_BUTTONS.filter((name, index) => {
+    const button = pad.buttons?.[index];
+    return ['LT','RT'].includes(name) ? button?.value >= PAD_TRIGGER_PRESS : !!button?.pressed;
+  });
+}
+/**
+ * One press of a combination: everything pressed from the first button down until all are released.
+ * step(pressed) → null while nothing happens, {keys, done:false} while buttons are held, {keys, done:true} on release.
+ */
+export function createPadCapture() {
+  let held = null;
+  return {step(pressed) {
+    if (pressed.length) {
+      held ||= new Set();
+      for (const name of pressed) held.add(name);
+      return {keys:gamepadBinding([...held]),done:false};
+    }
+    if (!held) return null;
+    const keys = gamepadBinding([...held]); held = null;
+    return {keys,done:true};
+  }};
+}
 export function comboFromEvent(event) {
   if (['Control','Shift','Alt','Meta'].includes(event.key)) return '';
   const key = (event.code || event.key).replace(/^Key/,'').replace(/^Digit/,'').replace(/^Numpad/,'Num');

@@ -230,24 +230,8 @@ export function mountSettings(parent, context = {}) {
   const input = panel.querySelector('input'), output = panel.querySelector('output');
   input.value = readPreferences().deadzone; output.value = Number(input.value).toFixed(2);
   input.addEventListener('input', () => {savePreferences({deadzone:Number(input.value)}); output.value = Number(input.value).toFixed(2);});
-  const mapping = document.createElement('details'); mapping.className = 'controller-settings-fold';
-  mapping.innerHTML = `<summary>Раскладка управления камерой</summary><div class="controller-mapping"></div>`;
-  const rows = [
-    ['View + Y','Включить / выключить камеру'],['Левый стик','Полёт вперёд / назад и в стороны'],
-    ['Правый стик','Обзор'],['RT / LT','Вверх / вниз'],['RB / LB','Быстрее / медленнее'],
-    ['L3','Ускорение ×5'],['Крестовина ↑ / ↓','Угол обзора FOV'],
-  ];
-  for (const [keys, action] of rows) {
-    const row = document.createElement('div'), badge = document.createElement('kbd'), label = document.createElement('span');
-    row.className = 'controller-mapping-row'; badge.textContent = keys; label.textContent = action;
-    row.append(badge,label); mapping.lastElementChild.append(row);
-  }
-  const updateMapping = state => {
-    const item = state.hotkeys?.find(item => item.id === 'freecam');
-    if (item && 'gamepadKeys' in item) mapping.querySelector('kbd').textContent = item.gamepadKeys?.replaceAll('+',' + ') || 'Не назначено';
-  };
-  const unsubscribe = context.bridge?.subscribe(updateMapping);
-  if (context.config?.modules?.includes('gamepad')) panel.append(mapping);
+  // The camera layout is not drawn here: it is a section of «Хоткеи» on the same page, built from the current
+  // bindings (state.hotkeys[].section) and the profile's fixed sticks and triggers (config.hotkeySections).
   const details = document.createElement('details'); details.className = 'controller-settings-fold'; details.id = 'controller-check';
   const summary = document.createElement('summary'); summary.textContent = 'Проверить кнопки, стики и курки';
   const content = document.createElement('div'); content.className = 'controller-test-content';
@@ -262,5 +246,5 @@ export function mountSettings(parent, context = {}) {
   const paths = parent.querySelector('#settings-paths');
   if (paths) paths.before(panel); else parent.append(panel);
   openFromHash();
-  return {dispose() {unsubscribe?.(); removeEventListener('hashchange',openFromHash); details.removeEventListener('toggle',toggle); instance?.dispose();}};
+  return {dispose() {removeEventListener('hashchange',openFromHash); details.removeEventListener('toggle',toggle); instance?.dispose();}};
 }

@@ -9,8 +9,9 @@ export function renderCategory(category, context, idPrefix = 'cheats-') {
     const command = item.type === 'action' ? 'cheat.run' : 'cheat.set';
     // Per-control capability avoids pretending every declared cheat is implemented.
     const capability = 'cheat:' + item.id;
-    const badge = item.hint ? h('kbd', {'data-hotkey':item.id}, item.hint) : null;
-    const pin = kind => context.pins?.register({key:'cheat:' + item.id, label:item.label, kind, hotkey:item.id, hint:item.hint, capability,
+    // «hotkey» in config.json names the adapter hotkey whose current keys the badge shows (default: the control id).
+    const badge = item.hint ? h('kbd', {'data-hotkey':item.hotkey || item.id}, item.hint) : null;
+    const pin = kind => context.pins?.register({key:'cheat:' + item.id, label:item.label, kind, hotkey:item.hotkey || item.id, hint:item.hint, capability,
       read, set:value => context.bridge.call('cheat.set', {id:item.id, value}),
       capture:kind === 'action' ? () => count ? {count:Number(count.value)} : {} : null,
       run:values => context.bridge.call('cheat.run', {id:item.id, values:values || {}})});

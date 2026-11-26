@@ -33,13 +33,17 @@ export function mount(parent, context) {
   const lookSave = commandButton('＋ Сохранить образ', 'replays.look.save', context, () => null);
   const lookPanel = h('section', {class:'panel replay-looks',hidden:true},
     h('div', {class:'panel-head'}, h('h2', {}, 'Образы'), h('div', {class:'inline'}, h('label', {class:'inline look-pose'}, lookPose, 'с ракурсом'), lookSave)), looks);
+  // REPLAY-05. Keys are not hard-coded: badges follow state.hotkeys (ids replays.record / play / stop).
+  const hotkey = id => h('kbd', {'data-hotkey':id, hidden:true});
+  const hotkeyLine = h('p', {class:'hint hotkeys',hidden:true}, hotkey('replays.record'), ' запись/пауза · ', hotkey('replays.play'), ' повтор/пауза · ', hotkey('replays.stop'), ' завершить');
+  bridge.subscribe(state => {hotkeyLine.hidden = !state.hotkeys?.some(item => item.id.startsWith('replays.') && (item.keys || item.gamepadKeys))});
   parent.append(heading('Записи и повторы', trash), controls, lookPanel, tracks, gallery);
   controls.append(
     h('div', {class:'inline wrap'}, kinds.length > 1 ? kind : h('span', {}, kinds[0].label), record, pause, stop, stateLabel),
     h('div', {class:'inline wrap playback-row'}, play, restart, observerLabel,
       h('label', {class:'replay-speed-label'}, 'Скорость', speed, speedValue)),
     h('div', {class:'timeline-row'}, h('span', {}, 'Таймлайн'), timeline, timelineValue), timelineHint,
-    h('p', {class:'hint hotkeys'}, h('kbd', {}, 'F6'), ' запись/пауза · ', h('kbd', {}, 'F7'), ' повтор/пауза · ', h('kbd', {}, 'F8'), ' завершить'));
+    hotkeyLine);
   const send = async (command,args) => {try {return await bridge.call('replays.' + command,args)} catch (error) {notify(error.message)}};
   speed.oninput = () => speedValue.textContent = '×' + num(speed.value);
   speed.onchange = () => send('speed', {value:Number(speed.value)});

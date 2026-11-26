@@ -1,6 +1,27 @@
 import {h, heading, notify} from '../../core/ui.js';
-import {PAD_BUTTONS, parseKeyboard, keyboardBinding, gamepadBinding, comboFromEvent, bindingConflict} from './bindings.mjs';
+import {PAD_BUTTONS, parseKeyboard, keyboardBinding, gamepadBinding, comboFromEvent, bindingConflict, padPressedWindows, padPressedBrowser, createPadCapture} from './bindings.mjs';
 export {comboFromEvent} from './bindings.mjs';
+
+// Buttons pressed right now on any connected controller: the Windows reader of the service (module «controller»,
+// works without browser focus) together with the browser Gamepad API. Returns a function that stops the watch.
+function watchPad(context, onSample) {
+  const url = (context.config.apiBase || '/api').replace(/\/$/,'') + '/controller/state';
+  let windows = {connected:false,pressed:[]}, busy = false, stopped = false;
+  const tick = () => {
+    if (context.config.modules?.includes('controller') && !busy) {
+      busy = true;
+      fetch(url,{cache:'no-store'}).then(response => response.ok ? response.json() : null).then(value => {
+        const devices = value && Array.isArray(value.devices) && value.ageMs < 700 ? value.devices : [];
+        windows = {connected:devices.length > 0,pressed:devices.flatMap(padPressedWindows)};
+      }).catch(() => {windows = {connected:false,pressed:[]};}).finally(() => {busy = false;});
+    }
+    let pads = [];
+    try {pads = Array.from(navigator.getGamepads?.() || []).filter(pad => pad?.connected && pad.mapping === 'standard');} catch {}
+    if (!stopped) onSample({connected:windows.connected || pads.length > 0,buttons:[...new Set([...windows.pressed,...pads.flatMap(padPressedBrowser)])]});
+  };
+  const timer = setInterval(tick,33); tick();
+  return () => {stopped = true; clearInterval(timer);};
+}
 
 export function mount(parent, context) {
   const {bridge} = context;
@@ -22,7 +43,7 @@ export function mount(parent, context) {
     const form = h('form', {},h('h2',{},(isPad ? '🎮 Геймпад' : '⌨ Клавиатура') + ' · ' + item.label));
     const dialog = h('dialog', {class:'binding-dialog','aria-label':(isPad ? 'Геймпад: ' : 'Клавиатура: ') + item.label},form);
     editor?.close(); editor = dialog;
-    let read, firstInput, capturing = false;
+    let read, firstInput, capturing = false, stopWatch = null;
     const showError = message => {error.textContent = message; error.hidden = !message;};
     const update = () => {
       showError('');
@@ -40,7 +61,23 @@ export function mount(parent, context) {
       }
       firstInput = inputs.get('View');
       read = () => gamepadBinding([...inputs].filter(([,input]) => input.checked).map(([name]) => name));
-      form.append(h('p',{class:'hint'},'Выберите одну кнопку или комбинацию. Привязка клавиатуры сохранится.'),grid);
+      // Assign by pressing: the dialog listens to the controller all the time it is open.
+      const listen = h('p',{class:'pad-capture',role:'status'}), capture = createPadCapture();
+      let status = '', captured = false;
+      const say = (text,state) => {if (text !== status) {status = text; listen.textContent = text; listen.dataset.state = state;}};
+      stopWatch = watchPad(context,sample => {
+        const step = capture.step(sample.buttons);
+        if (step) {
+          const chosen = step.keys.split('+');
+          for (const [name,input] of inputs) input.checked = chosen.includes(name);
+          captured = true; update();
+        }
+        if (step && !step.done) say('Держите… Отпустите, когда комбинация готова.','hold');
+        else if (captured) say('Считано с геймпада. Нажмите «Сохранить» — или другую комбинацию, чтобы заменить.','done');
+        else if (sample.connected) say('🎮 Нажмите на геймпаде кнопку или комбинацию и отпустите.','wait');
+        else say('Геймпад не найден. Подключите его или отметьте кнопки вручную.','none');
+      });
+      form.append(listen,grid,h('p',{class:'hint'},'Кнопки можно отметить и вручную.' + (item.gamepadOnly ? '' : ' Привязка клавиатуры сохранится.')));
     } else {
       let initial = {key:'',ctrl:false,alt:false,shift:false};
       try {initial = parseKeyboard(item[field]);} catch {}
@@ -83,7 +120,7 @@ export function mount(parent, context) {
     form.onsubmit = event => {event.preventDefault(); try {commit(read());} catch (failure) {showError(failure.message);}};
     cancel.onclick = () => dialog.close(); clear.onclick = () => commit('');
     form.append(h('div',{class:'binding-result'},h('span',{},'Комбинация'),preview),error,h('div',{class:'inline wrap dialog-actions'},clear,cancel,save));
-    dialog.onclose = () => {dialog.remove(); if (editor === dialog) editor = null;};
+    dialog.onclose = () => {stopWatch?.(); dialog.remove(); if (editor === dialog) editor = null;};
     document.body.append(dialog); update(); dialog.showModal(); firstInput?.focus();
   }
 
@@ -91,6 +128,8 @@ export function mount(parent, context) {
     const isPad = device === 'gamepad', label = isPad ? 'Геймпад' : 'Клавиатура';
     const field = isPad ? 'gamepadKeys' : 'keys', defaultField = isPad ? 'gamepadDefault' : 'default';
     const command = isPad ? 'hotkeys.gamepad.set' : 'hotkeys.set', resetCommand = isPad ? 'hotkeys.gamepad.reset' : 'hotkeys.reset';
+    // A gamepad-only action (camera buttons): the keyboard side is fixed in the game and only named here.
+    if (!isPad && item.gamepadOnly) return h('div',{class:'hotkey-cell',role:'cell'},h('small',{class:'hotkey-device-label'},label),h('span',{class:'hotkey-note'},sectionOf(item).keyboard?.[item.id] || '—'));
     const available = bridge.available(command), resetAvailable = bridge.available(resetCommand);
     const assigned = !!item[field];
     const button = h('button',{type:'button',class:'hotkey-key' + (assigned ? '' : ' empty'),'aria-label':`Назначить ${isPad ? 'геймпад' : 'клавиатуру'}: ${item.label}`,disabled:!available.enabled,title:available.enabled ? '' : available.reason},assigned ? item[field].replaceAll('+',' + ') : '＋ Назначить');
@@ -105,6 +144,17 @@ export function mount(parent, context) {
     try {warning ||= bindingConflict(bridge.state.hotkeys || [],item.id,device,item[field] || '');} catch {}
     return h('div',{class:'hotkey-cell',role:'cell'},h('small',{class:'hotkey-device-label'},label),h('div',{class:'inline'},button,reset),warning ? h('small',{class:'hotkey-warning'},warning) : null);
   }
+  // config.json → hotkeySections {"<section>": {hint, keyboard:{id:text}, fixed:[{label,keys,gamepadKeys}]}}: what the
+  // profile adds to a section of the adapter's list (state.hotkeys[].section) — controls that are not rebindable.
+  const sectionOf = item => context.config.hotkeySections?.[item.section] || {};
+  function sectionRows(name, items, hasPad) {
+    const extra = context.config.hotkeySections?.[name] || {};
+    const note = text => h('div',{class:'hotkey-cell',role:'cell'},h('span',{class:'hotkey-note'},text || '—'));
+    return [h('div',{class:'hotkey-section',role:'row'},h('h3',{role:'cell'},name),extra.hint ? h('p',{class:'hint',role:'cell'},extra.hint) : null),
+      ...(extra.fixed || []).map(row => h('div',{class:'hotkey-row hotkey-fixed',role:'row'},h('span',{role:'cell',class:'hotkey-action'},row.label),note(row.keys),hasPad ? note(row.gamepadKeys) : null)),
+      ...items.map(item => actionRow(item,hasPad))];
+  }
+  const actionRow = (item, hasPad) => h('div',{class:'hotkey-row',role:'row'},h('span',{role:'cell',class:'hotkey-action'},item.label),deviceCell(item,'keyboard'),hasPad ? deviceCell(item,'gamepad') : null);
   function render() {
     const state = bridge.state;
     const next = JSON.stringify([state.hotkeys,state.settings,bridge.busy,state.availability]);
@@ -113,7 +163,9 @@ export function mount(parent, context) {
     const hasPad = context.config.modules.includes('gamepad') || !!state.availability?.['hotkeys.gamepad.set']?.enabled || items.some(item => item.gamepadKeys);
     table.classList.toggle('keyboard-only',!hasPad);
     const header = h('div',{class:'hotkey-row hotkey-header',role:'row'},h('span',{role:'columnheader'},'Действие'),h('span',{role:'columnheader'},'Клавиатура'),hasPad ? h('span',{role:'columnheader'},'Геймпад') : null);
-    table.replaceChildren(header,...items.map(item => h('div',{class:'hotkey-row',role:'row'},h('span',{role:'cell',class:'hotkey-action'},item.label),deviceCell(item,'keyboard'),hasPad ? deviceCell(item,'gamepad') : null)));
+    const sections = [...new Set(items.map(item => item.section).filter(Boolean))];
+    table.replaceChildren(header,...items.filter(item => !item.section).map(item => actionRow(item,hasPad)),
+      ...sections.flatMap(name => sectionRows(name,items.filter(item => item.section === name),hasPad)));
     if (!items.length) table.replaceChildren(h('p',{class:'hint'},'Хоткеев пока нет.'));
     const settings = state.settings || {};
     const field = (key,label) => h('label',{class:'control'},h('span',{},label),h('input',{type:'text',value:settings[key] || '',readonly:true,'aria-label':label}));

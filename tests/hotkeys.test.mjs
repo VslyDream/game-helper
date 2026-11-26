@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseKeyboard,keyboardBinding,gamepadBinding,comboFromEvent,bindingConflict} from '../assets/site/modules/settings/bindings.mjs';
+import {parseKeyboard,keyboardBinding,gamepadBinding,comboFromEvent,bindingConflict,padPressedWindows,padPressedBrowser,createPadCapture} from '../assets/site/modules/settings/bindings.mjs';
 import {register} from '../assets/site/modules/settings/demo.js';
 
 function fixture(modules = ['gamepad'], hotkeys) {
@@ -62,4 +62,25 @@ test('older stored keyboard settings survive adding controller bindings', () => 
   const withoutPad = fixture([]);
   assert.equal(withoutPad.handlers.has('hotkeys.gamepad.set'),false);
   assert.equal('gamepadKeys' in withoutPad.state.hotkeys[0],false);
+});
+test('a combination pressed on the controller is collected until every button is released', () => {
+  const capture = createPadCapture();
+  assert.equal(capture.step([]),null);
+  assert.deepEqual(capture.step(['Y']),{keys:'Y',done:false});
+  assert.deepEqual(capture.step(['Y','View']),{keys:'View+Y',done:false});
+  assert.deepEqual(capture.step(['View']),{keys:'View+Y',done:false});
+  assert.deepEqual(capture.step([]),{keys:'View+Y',done:true});
+  assert.equal(capture.step([]),null);
+  assert.deepEqual(padPressedWindows({buttons:{a:true,back:true,x:false},triggers:{lt:.2,rt:.9}}),['A','View','RT']);
+  assert.deepEqual(padPressedBrowser({mapping:'standard',buttons:[{pressed:true},{},{},{},{},{},{value:.7},{value:.1}]}),['A','LT']);
+  assert.deepEqual(padPressedBrowser({mapping:'',buttons:[{pressed:true}]}),[]);
+});
+test('a section of the list holds gamepad-only actions and does not disturb ordinary hotkeys', () => {
+  const config = {modules:['gamepad']}, handlers = new Map(), state = {};
+  register({state,on:(command,handler) => handlers.set(command,handler)},config);
+  const camera = state.hotkeys.filter(item => item.section);
+  assert.ok(camera.length && camera.every(item => item.gamepadOnly && !item.keys && item.gamepadKeys));
+  assert.ok(camera.every(item => config.hotkeySections[item.section].keyboard[item.id]));
+  assert.throws(() => handlers.get('hotkeys.gamepad.set')({id:'hideUi',keys:camera[0].gamepadKeys}),/Совпадает/);
+  assert.equal(state.hotkeys.filter(item => !item.section).length,3);
 });

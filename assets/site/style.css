@@ -14,6 +14,9 @@ dialog{background:var(--panel);color:var(--text);border:1px solid #476073;border
 @media(max-width:760px){.app-sidebar{height:auto;overflow:visible}.sidebar-navigation{flex:none;overflow:visible}.sidebar-bottom{width:100%;margin-top:0;padding-top:8px}.sidebar-bottom .app-sidebar-bottom{margin-top:6px}.nav-page-group:first-child{flex-basis:100%}.category-nav{margin:5px 0 8px 10px;padding-left:10px;border-left:1px solid #35505a}.hotkey-header{display:none}.hotkey-row,.hotkey-table.keyboard-only .hotkey-row{grid-template-columns:1fr 1fr;padding:10px 0;border-bottom:1px solid var(--line);gap:9px}.hotkey-action{grid-column:1/-1}.hotkey-device-label{display:block;margin-bottom:4px;font-size:11px}.hotkey-key{font-size:12px}.binding-keyboard{grid-template-columns:1fr}.binding-dialog form{min-width:0}}
 /* Hotkeys: empty binding invites assignment; changed binding is marked and only it can be reset */
 .hotkey-key.empty{color:var(--muted);background:transparent;border-style:dashed}.hotkey-key.changed{border-color:#4e7c74}
+/* Hotkeys: a section of the list (camera on the controller), its fixed controls, reading a combination from the controller */
+.hotkey-section{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}.hotkey-section h3{margin:0;font-size:14px}.hotkey-section .hint{margin:4px 0 0}.hotkey-note{color:var(--muted);font-size:13px}.hotkey-fixed .hotkey-note{display:block;padding:6px 0}
+.pad-capture{margin:0 0 12px;padding:10px 12px;border:1px dashed var(--line);border-radius:7px;font-size:13px;color:var(--muted)}.pad-capture[data-state="wait"],.pad-capture[data-state="hold"]{border-color:var(--accent);color:var(--text)}.pad-capture[data-state="done"]{border-style:solid;border-color:#4e7c74;color:var(--text)}
 /* Staging page heading */
 .staging-prepare{gap:8px;font-size:13px;color:var(--muted)}
 /* UI-18 Pinned actions in the sidebar: compact, own scroll so the page menu keeps its room */

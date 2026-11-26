@@ -4,6 +4,9 @@ export function register(ctx, config) {
   ctx.state.replays = {items,...ctx.state.replays,status:'idle',recording:false,selectedId:null,time:0,duration:0,speed:1,tracks:[],observer:false};
   const data = ctx.state.replays;
   data.items = data.items.filter(item => kinds.includes(item.kind));
+  // REPLAY-05: the page shows the keys of the current bindings; the customary defaults live in the adapter (here — the demo).
+  for (const [id,label,keys] of [['replays.record','Запись: начать / пауза','F6'],['replays.play','Повтор: начать / пауза','F7'],['replays.stop','Запись и повтор: завершить','F8']])
+    if (ctx.state.hotkeys && !ctx.state.hotkeys.some(item => item.id === id)) ctx.state.hotkeys.push({id,label,keys,default:keys});
   let timer, beforePause, lastTime;
   const stopTick = () => {clearInterval(timer); timer = null};
   ctx.onClose(stopTick);

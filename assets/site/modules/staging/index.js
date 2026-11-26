@@ -8,11 +8,11 @@ export function mount(parent, context) {
   const prepare = toggle({label:'Подготовка', command:'staging.prepare', read:state => state.staging?.prepare, context});
   prepare.classList.add('staging-prepare');
   const action = commandButton('▶ Мотор', 'staging.action', context, () => ({}), 'primary');
-  if (hotkey) action.append(h('kbd', {}, hotkey));
+  action.append(h('kbd', {'data-hotkey':'staging.action', hidden:!hotkey}, hotkey));
   const pins = context.pins;
   pins?.register({key:'staging:prepare', label:'Подготовка', kind:'toggle', capability:'staging.prepare',
     read:state => state.staging?.prepare, set:value => context.bridge.call('staging.prepare', {enabled:value})});
-  pins?.register({key:'staging:action', label:'▶ Мотор', kind:'action', hint:hotkey, capability:'staging.action',
+  pins?.register({key:'staging:action', label:'▶ Мотор', kind:'action', hotkey:'staging.action', hint:hotkey, capability:'staging.action',
     run:() => context.bridge.call('staging.action', {}), primary:true});
   prepare.querySelector('span').append(pins?.button('staging:prepare') || '');
   parent.append(heading('Постановка', prepare, h('span', {class:'inline pin-host'}, action, pins?.button('staging:action'))));
