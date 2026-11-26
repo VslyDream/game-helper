@@ -44,7 +44,7 @@ export function register(ctx, config) {
   ctx.on('replays.trash', ({id}) => {data.items.find(item => item.id === id).deleted = true});
   ctx.on('replays.restore', ({id}) => {data.items.find(item => item.id === id).deleted = false});
   if (!kinds.includes('camera')) {delete data.looks; return}
-  // Look presets (REPLAY-23): camera/optics values plus cheats marked "look": true in config.
+  // Camera points (CAM-18): camera/optics values plus cheats marked "look": true in config.
   const lookKeys = ['fov','focusDistance','aperture','moveSmoothing','lookSmoothing'];
   const lookCheats = [...(config.cheats || []), ...(config.staging?.sections || [])].flatMap(category => category.controls || []).filter(item => item.look);
   const summary = look => ['FOV ' + look.freecam.fov, look.freecam.aperture ? 'f/' + look.freecam.aperture : '',

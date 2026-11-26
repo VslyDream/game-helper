@@ -26,7 +26,7 @@ export function mount(parent, context) {
   const gallery = h('div', {class:'gallery replay-gallery'});
   const trashCount = h('span', {}, '0');
   const trash = h('button', {}, 'Корзина ', trashCount);
-  // REPLAY-23. Look presets: a named camera/optics/view-cheats state, applied in one click without recording.
+  // Camera points (modules/freecam/POINTS.md, CAM-18…26): a named camera/optics/view-cheats state, applied in one click.
   const hasLooks = config.modules.includes('replay-camera');
   const looks = h('div', {class:'looks'});
   const lookPose = h('input', {type:'checkbox',checked:true});
@@ -55,7 +55,7 @@ export function mount(parent, context) {
     const name = await inputDialog('Название образа', [camera.fov ? 'FOV ' + num(camera.fov) : '', camera.aperture ? 'f/' + num(camera.aperture) : ''].filter(Boolean).join(', '));
     if (name) send('look.save', {name,pose:lookPose.checked});
   });
-  // Partial apply is a success: the adapter names what it skipped (REPLAY-27).
+  // Partial apply is a success: the adapter names what it skipped (CAM-22).
   const applyLook = async (item, pose = true) => {
     const result = await bridge.call('replays.look.apply', {id:item.id,pose:pose && !!item.pose});
     if (result?.skipped?.length) notify('Применено без: ' + result.skipped.join(', '));

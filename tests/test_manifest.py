@@ -23,6 +23,12 @@ class ManifestTests(unittest.TestCase):
             self.assertIn('`' + name + '`', skill, name)
             for path in module.get('specs', {}).values():
                 self.assertIn(Path(path).parent.as_posix(), skill, path)
+                self.assertIn(Path(path).name, skill, path)
+
+    def test_every_module_document_belongs_to_a_module(self):
+        listed = {path for module in MODULES.values() for path in module.get('specs', {}).values()}
+        for path in sorted((KIT / 'modules').glob('*/*.md')):
+            self.assertIn(path.relative_to(KIT).as_posix(), listed, path.name)
 
     def test_site_loads_only_known_modules(self):
         app = (KIT / 'assets/site/app.js').read_text(encoding='utf-8')

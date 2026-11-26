@@ -1,8 +1,9 @@
 {
   "freecam": {
-    "title": "Фрикамера (оптика — опция профиля)",
+    "title": "Фрикамера (оптика и точки камеры — опции)",
     "ui": "freecam",
-    "specs": {"freecam.md": "modules/freecam/SPEC.md", "freecam-adapter.md": "modules/freecam/ADAPTER.md"}
+    "specs": {"freecam.md": "modules/freecam/SPEC.md", "freecam-adapter.md": "modules/freecam/ADAPTER.md",
+              "freecam-points.md": "modules/freecam/POINTS.md"}
   },
   "gamepad": {
     "title": "Геймпад для камеры",
@@ -23,7 +24,7 @@
     "specs": {"snapshots.md": "modules/snapshots/SPEC.md", "snapshots-adapter.md": "modules/snapshots/ADAPTER.md"}
   },
   "replay-camera": {
-    "title": "Повторы камеры и пресеты образа",
+    "title": "Запись и повтор движения камеры",
     "requires": ["freecam"],
     "ui": "replays",
     "gallery": true,
@@ -33,8 +34,8 @@
     "title": "Повторы игроков с реальными действиями",
     "ui": "replays",
     "gallery": true,
-    "specs": {"replays.md": "modules/replays/SPEC.md", "replays-adapter.md": "modules/replays/ADAPTER.md",
-              "world-state.md": "contracts/world-state.md"}
+    "specs": {"replays.md": "modules/replays/SPEC.md", "replays-players.md": "modules/replays/PLAYERS.md",
+              "replays-adapter.md": "modules/replays/ADAPTER.md", "world-state.md": "contracts/world-state.md"}
   },
   "catalog": {
     "title": "Справочник предметов / сущностей",

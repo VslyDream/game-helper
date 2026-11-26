@@ -15,11 +15,13 @@ description: Создавать локальные игровые хелперы
 |---|---|---|
 | 0. Заявка | Из сообщения и [PROJECT.md](PROJECT.md) определить игру, папку, режимы, выбранные модули и читы. Значимые противоречия уточнить, остальное решить по контексту | — |
 | 1. Исследование | Разведка `scripts/recon.py` → **один** плейбук движка → маршрут в `MODDING_PLAN.md` → находки в `docs/` → матрица `docs/00_capabilities.md`. Вести `MODLOG.md`; одна ошибка трижды — стоп | [process.md](references/process.md), [research.md](references/research.md), [engines/](references/engines/README.md), нужные разделы [pitfalls.md](references/pitfalls.md) |
-| 2. Предложения | Короткий список того, что игра реально позволяет сверх заказанного, и цена служебных инструментов для этой игры (DEV-09). Без выбора пользователя ничего из списка не делать | матрица возможностей |
+| 2. Предложения | Короткий список того, что игра реально позволяет сверх заказанного, и цена служебных инструментов для этой игры (DEV-09). Предложения модулей — только выбранных, из раздела «Предложить до съёмок» их ТЗ. Без выбора пользователя ничего из списка не делать | матрица возможностей, ТЗ выбранных модулей |
 | 3. Сайт и адаптер | Первая функция сквозь всю цепочку «плагин → API → панель → игра», затем остальное. Сайт — из `assets/site/` генератором `scripts/create_project.py --help` | [core.md](references/core.md), [ui.md](references/ui.md), [layout.md](references/layout.md), [adapter.md](contracts/adapter.md), ТЗ выбранных модулей |
 | 4. Приёмка | Проверить приёмку выбранных модулей в игре. Сообщить отдельно: работает / ограничено / «проверить руками» (DEV-08) | разделы «Приёмка» прочитанных ТЗ |
 
 Заготовки: документы проекта — `templates/docs/`, плагин Unity IL2CPP + BepInEx 6 — `templates/plugin-il2cpp/`, цикл сборки и CLI агента — `templates/tools/`. Генератор кладёт их в проект сам.
+
+Не обкатано в живом проекте: разведка `scripts/recon.py`, плейбуки движков и каркас плагина собраны из опыта прошлых игр, но ни один проект с ними от начала до конца ещё не пройден. Сверять с игрой и записывать расхождения.
 
 ## Модули
 
@@ -27,12 +29,12 @@ description: Создавать локальные игровые хелперы
 
 | Флаг | Что это | ТЗ | Ресурсы сайта |
 |---|---|---|---|
-| `freecam` | Фрикамера, оптика | `modules/freecam/SPEC.md`, `ADAPTER.md` | `assets/site/modules/freecam/` |
+| `freecam` | Фрикамера, оптика, точки камеры | `modules/freecam/SPEC.md`, `ADAPTER.md`, `POINTS.md` | `assets/site/modules/freecam/` |
 | `gamepad` | Управление фрикамерой с геймпада; требует `freecam` | `modules/freecam/GAMEPAD.md` | ввод — в адаптере игры |
 | `controller` | Считывание и диагностика контроллера, независимо от камеры | `modules/controller/SPEC.md`, `ADAPTER.md`, `VERIFIED.md` | `assets/site/modules/controller/`, `assets/runtime/controller_input.py` |
 | `snapshots` | Сохранения и галерея | `modules/snapshots/SPEC.md`, `ADAPTER.md` | `assets/site/modules/snapshots/` |
-| `replay-camera` | Повторы камеры и пресеты образа; требует `freecam` | `modules/replays/SPEC.md`, `ADAPTER.md` | `assets/site/modules/replays/` |
-| `replay-players` | Повторы игроков с реальными действиями | то же + [world-state.md](contracts/world-state.md) | то же |
+| `replay-camera` | Запись и повтор движения камеры; требует `freecam` | `modules/replays/SPEC.md`, `ADAPTER.md` | `assets/site/modules/replays/` |
+| `replay-players` | Повторы игроков с реальными действиями | то же + `PLAYERS.md`, [world-state.md](contracts/world-state.md) | то же |
 | `catalog` | Справочник предметов / сущностей | `modules/catalog/SPEC.md` | `assets/site/modules/catalog/` |
 | `staging` | Постановка сцены | `modules/staging/SPEC.md` | `assets/site/modules/staging/` |
 | `mcp` | Управление из чата и служебный доступ агента в игру | `modules/mcp/SPEC.md` | сервер поверх локального API |
