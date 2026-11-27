@@ -84,3 +84,12 @@ test('a section of the list holds gamepad-only actions and does not disturb ordi
   assert.throws(() => handlers.get('hotkeys.gamepad.set')({id:'hideUi',keys:camera[0].gamepadKeys}),/Совпадает/);
   assert.equal(state.hotkeys.filter(item => !item.section).length,3);
 });
+test('the camera section is the main layout of GAMEPAD.md; focus and aperture need the optics', () => {
+  const layout = optics => {
+    const config = {modules:['gamepad'],freecam:{optics}}, state = {};
+    register({state,on() {}},config);
+    return Object.fromEntries(state.hotkeys.filter(item => item.section).map(item => [item.id.replace('freecam.pad.',''),item.gamepadKeys]));
+  };
+  assert.deepEqual(layout(true),{focusLock:'A',lookBoost:'R3',boost:'L3',zoom:'LB',focus:'RB',faster:'↑',slower:'↓',wider:'→',narrower:'←'});
+  assert.deepEqual(layout(false),{lookBoost:'R3',boost:'L3',zoom:'LB',faster:'↑',slower:'↓'});
+});

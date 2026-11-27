@@ -12,11 +12,16 @@ export function register(ctx, config) {
     item.gamepadDefault ??= item.id === 'freecam' ? 'View+Y' : '';
     item.gamepadKeys ??= item.gamepadDefault;
   }
-  // Demo of a list section (contracts/adapter.md): the usual camera scheme from modules/freecam/GAMEPAD.md.
-  // Every game fills its own section; sticks and triggers are fixed rows of the profile (config.hotkeySections).
-  const section = 'Камера на контроллере';
-  const camera = [['freecam.pad.faster','Быстрее','RB','Колесо вверх'],['freecam.pad.slower','Медленнее','LB','Колесо вниз'],
-    ['freecam.pad.boost','Ускорение ×5, пока держишь','L3','Shift'],['freecam.pad.wider','Угол обзора шире','↑','Alt + колесо вверх'],['freecam.pad.narrower','Угол обзора уже','↓','Alt + колесо вниз']];
+  // Demo of a list section (contracts/adapter.md): the main camera layout from modules/freecam/GAMEPAD.md.
+  // Sticks and triggers are fixed rows of the profile (config.hotkeySections). The rows of focus and aperture
+  // (the last item of a row is true) need the optics of the free camera and are left out without it.
+  const section = 'Камера на контроллере', optics = config.freecam?.optics !== false;
+  const camera = [['freecam.pad.focusLock','Точка фокуса: закрепить / отпустить','A','Средняя кнопка мыши',true],
+    ['freecam.pad.lookBoost','Ускорение поворота ×5, пока держишь','R3','—'],['freecam.pad.boost','Ускорение полёта ×5, пока держишь','L3','Shift'],
+    ['freecam.pad.zoom','Зум: держать и жать RT / LT','LB','Alt + колесо'],['freecam.pad.focus','Фокус: держать и жать RT / LT','RB','Ctrl + колесо',true],
+    ['freecam.pad.faster','Скорость быстрее','↑','Колесо вверх'],['freecam.pad.slower','Скорость медленнее','↓','Колесо вниз'],
+    ['freecam.pad.wider','Диафрагма шире (больше размытия)','→','Ctrl + Alt + колесо вверх',true],['freecam.pad.narrower','Диафрагма уже','←','Ctrl + Alt + колесо вниз',true]]
+    .filter(row => optics || !row[4]);
   if (hasPad) {
     for (const [id,label,keys] of camera) if (!state.hotkeys.some(item => item.id === id)) state.hotkeys.push({id,label,section,gamepadOnly:true,keys:'',gamepadKeys:keys,gamepadDefault:keys});
     config.hotkeySections ??= {[section]:{hint:'Работает, пока включена фрикамера. Стики и курки не переназначаются; столбец «Клавиатура» — для справки.',
